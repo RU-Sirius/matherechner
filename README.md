@@ -74,7 +74,7 @@ erfolgt im angegebenen bzw. sichtbaren Bereich. Quartile: Median der unteren/obe
 - `sw.js`: Offline-Cache. **Nach Änderungen `CACHE`-Version erhöhen.**
 
 ## Lizenzen
-- MatheRechner: MIT (siehe `LICENSE`). Built by R. U. Sirius?
+- MatheRechner: MIT (siehe `LICENSE`). Built by Lukas Kopp
 - [math.js](https://mathjs.org) von Jos de Jong: Apache License 2.0 (`vendor/LICENSE-mathjs.txt`, `vendor/math.js.LICENSE.txt`).
 
 Kostenloses Hilfsmittel ohne Gewähr.
