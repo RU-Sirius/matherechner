@@ -3,7 +3,7 @@
 import * as M from "./mx.js";
 import { h } from "./ui.js";
 import { svgIcon } from "./icons.js";
-import { createLcdApp } from "./lcdmodes.js";
+import { createLcdApp, menuLabel, menuIndex } from "./lcdmodes.js";
 
 const math = M.math;
 const CUR = "__c__", BOX = "__p__";
@@ -239,7 +239,7 @@ export function schoolCalc(menuItems = []) {
   app.setMenuRenderer(() => showMenu());
   // Tasten im Modus-Bildschirm: Eingabe, Cursor, DEL, AC, =, OPTN an den Modus weiterreichen
   function fieldOp(op, t) {
-    if (mode === "menu") { if (op === "ac") showComp(); return; }
+    if (mode === "menu") { if (op === "ac") showComp(); else if (op === "insert") { const i = menuIndex(t); if (i !== null) pickTile(i + 1); } return; }
     app.key({ insert: "ins", del: "del", ac: "ac", left: "left", right: "right", next: "exe", prev: "up", down: "down", optn: "optn" }[op] ?? op, t);
   }
   function showComp(o) {
@@ -250,7 +250,7 @@ export function schoolCalc(menuItems = []) {
     mode = "menu"; lcd.hidden = true; app.el.hidden = true; screen.hidden = false;
     scrHead.replaceChildren(span("scr-title", "MENU – Modus wählen"));
     scrBody.replaceChildren(h("div", { class: "scr-grid" }, ...app.modes.map(([key, label], i) =>
-      h("button", { class: "scr-tile", "data-nr": i + 1, onclick: () => openMode(i) }, h("span", { class: "scr-ico" }, svgIcon(key)), span("scr-lbl", label), i < 9 ? span("scr-nr", String(i + 1)) : null))));
+      h("button", { class: "scr-tile", "data-nr": i + 1, onclick: () => openMode(i) }, h("span", { class: "scr-ico" }, svgIcon(key)), span("scr-lbl", label), span("scr-nr", menuLabel(i))))));
     scrBody.scrollTop = 0;
   }
   function openMode(i) {
@@ -395,7 +395,7 @@ export function schoolCalc(menuItems = []) {
     if (mode !== "comp") { // Modus-Bildschirm: Tastatur wie Rechner-Tastenfeld
       const map = { Enter: "next", "=": "next", Backspace: "del", Escape: "ac", ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
       if (map[k]) { e.preventDefault(); return fieldOp(map[k]); }
-      if (k.length === 1 && /[0-9a-zA-Z+\-*/^().,!%]/.test(k)) { e.preventDefault(); if (mode === "menu") { if (/[1-9]/.test(k)) pickTile(Number(k)); return; } fieldOp("insert", k === "*" ? "×" : k === "/" ? "÷" : k === "-" ? "−" : k); }
+      if (k.length === 1 && /[0-9a-zA-Z+\-*/^().,!%]/.test(k)) { e.preventDefault(); if (mode === "menu") { const i = menuIndex(k); if (i !== null) pickTile(i + 1); return; } fieldOp("insert", k === "*" ? "×" : k === "/" ? "÷" : k === "-" ? "−" : k); }
       return;
     }
     if (k === "Enter" || k === "=") { e.preventDefault(); exe(); } else if (k === "Backspace") { e.preventDefault(); del(); } else if (k === "Escape") ac();

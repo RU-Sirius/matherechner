@@ -2,6 +2,9 @@
 // Bearbeitungszeile unten, = rechnet, AC zurück. Bedienung ausschließlich über das Rechner-Tastenfeld.
 import { h } from "./ui.js";
 
+// Auswahl wie beim Schulrechner: 1–9, danach A, B, C …
+export const menuLabel = (i) => (i < 9 ? String(i + 1) : String.fromCharCode(65 + i - 9));
+export const menuIndex = (t) => { const c = String(t).trim().toUpperCase(); return /^[1-9]$/.test(c) ? Number(c) - 1 : /^[A-Z]$/.test(c) ? 9 + c.charCodeAt(0) - 65 : null; };
 export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp }) {
   const math = M.math;
   const span = (cls, ...k) => h("span", { class: cls }, ...k);
@@ -38,7 +41,7 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
     if (edit) editLine.replaceChildren(natural(edit.text, edit.cur));
     if (s.type === "menu") {
       body.replaceChildren(...s.items.map(([label], i) => h("div", { class: "la-row" + (i === s.sel ? " sel" : ""), onclick: () => { s.sel = i; pick(); } },
-        span("la-nr", `${i + 1}:`), span("la-lbl", label))));
+        span("la-nr", `${menuLabel(i)}:`), span("la-lbl", label))));
     } else if (s.type === "form") {
       body.replaceChildren(...(s.intro ? [h("div", { class: "la-intro" }, typeof s.intro === "function" ? s.intro() : s.intro)] : []),
         ...s.cells.map((c, i) => h("div", { class: "la-row" + (i === s.sel ? " sel" : ""), onclick: () => { commitIfEditing(); s.sel = i; render(); } },
@@ -110,7 +113,7 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
       if (name === "ins" && s.out !== null && !s.ed.text) s.out = null;
     }
     if (name === "ins") {
-      if (s.type === "menu") { if (/^[1-9]$/.test(t) && Number(t) <= s.items.length) { s.sel = Number(t) - 1; pick(); } return; }
+      if (s.type === "menu") { const i = menuIndex(t); if (i !== null && i < s.items.length) { s.sel = i; pick(); } return; }
       if (s.type === "result" || s.readonly) return;
       if (!edit) edit = { text: "", cur: 0 };
       const slot = t.search(/\(\)|\(,|,,|,\)/);
