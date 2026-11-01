@@ -13,11 +13,19 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.4.1)
+## Funktionen (v1.5.0)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
-- **Startseite mit Umschalter „Liste | Rechner“:** Im Rechner-Modus zeigt die App nur das Rechnergehäuse; über **MENU** öffnen sich alle Funktionen (Gleichungen, Analysis, Matrizen, Statistik, Plotter …) **im Display** und werden mit dem Rechner-Tastenfeld bedient (Feld antippen, ▲▼ wechselt Felder, = weiter, DEL/AC)
+- **Startseite mit Umschalter „Liste | Rechner“:** Im Rechner-Modus zeigt die App nur das Rechnergehäuse
+- **Rechner-Modi im Display wie bei einem Schulrechner** (MENU, Auswahl per Zifferntaste): keine Eingabefelder, sondern LCD-Bildschirme mit
+  nummerierten Menüs, Koeffizienten- und Datentabellen, Bearbeitungszeile unten; ◀▶▲▼ bewegen den Cursor, = übernimmt bzw. rechnet, AC führt zurück
+  - **Berechnen**, **Komplex** (CMPLX; S⇔D wechselt a+bi ↔ r∠θ), **Basis-N** (Eingabe Dez/Hex/Bin/Okt, Ergebnis ganzzahlig in allen vier Systemen)
+  - **Matrix** (MatA/MatB bis 4 × 4 bearbeiten; det, A⁻¹, Aᵀ, A ± B, A × B, Rang, Eigenwerte), **Vektor** (VctA/VctB 2D/3D; Betrag, Skalar-/Kreuzprodukt, Winkel, Summe/Differenz, Einheitsvektor)
+  - **Statistik** (1 Variable oder Regression linear/quadratisch/log/exp/Potenz; x/y-Datentabelle), **Verteilung** (Normal-VD/-VK, Invers Normal, Binomial-VD/-VK, Poisson-VD/-VK)
+  - **Tabelle** (f(x), g(x), Start/Ende/Schritt, max. 200 Zeilen), **Gleichung** (Gleichungssystem 2–4 Unbekannte, Polynom Grad 2–6, Ungleichung Grad 1–4)
+  - **Plotter** (f und g im Display, Spur mit ◀▶, Zoom mit +/−; immer im Bogenmaß) und **Kurvendiskussion** (f′, f″, Nullstellen, Extrema, Wendepunkte)
+  - Eingaben der Modi bleiben gespeichert; die Listenansicht der App bietet dieselben Werkzeuge weiterhin als Formulare
 - Zahlenfelder akzeptieren Rechenausdrücke wie 1/3, √2, 2π
 - **Taschenrechner mit Umschalter „Standard | Schulrechner“** (Wahl wird gespeichert); fehlende schließende Klammern werden am Ende automatisch ergänzt
 - **Schulrechner-Ansicht:** Gehäuse mit LCD, natürliche Darstellung wie im Lehrbuch (Brüche, Wurzeln, Potenzen, ∫, d/dx, Σ schon bei der Eingabe),
@@ -70,7 +78,7 @@ erfolgt im angegebenen bzw. sichtbaren Bereich. Quartile: Median der unteren/obe
 
 ## Entwicklung
 - `mx.js`: Rechenlogik · Tests: `node test.mjs`
-- `views.js`, `views2.js`: Rechner · `graph.js`: Funktionsplotter · `fx.js`: Schulrechner-Ansicht mit Formelsatz · `mathlib.js` + `vendor/math.js`: math.js
+- `views.js`, `views2.js`: Rechner · `graph.js`: Funktionsplotter · `fx.js`: Schulrechner-Ansicht mit Formelsatz · `lcdmodes.js`: Rechner-Modi im Display · `mathlib.js` + `vendor/math.js`: math.js
 - `ui.js`, `projects.js` (Speicher-Namensraum `mx:`), `pdf.js`, `install.js`, `icons.js`, `app.js`
 - `sw.js`: Offline-Cache. **Nach Änderungen `CACHE`-Version erhöhen.**
 

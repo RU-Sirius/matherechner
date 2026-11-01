@@ -197,3 +197,34 @@ button.action { width: 100%; border: 0; background: none; font: inherit; color: 
 .home-switch.compact .seg button { padding: 5px 0; font-size: 13px; }
 body.calc-home main { padding-bottom: 0; }
 .int-glyph { font: italic 1.45em/1 "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", Times, serif; margin-right: 1px; vertical-align: -0.12em; }
+/* ---------- Modus-Bildschirme im LCD (Gleichung, Matrix, Statistik …) ---------- */
+.lcd-app { color: #1d2320; font: 500 15px/1.25 "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; padding: 3px 6px 4px; gap: 2px; }
+.fx .lcd-app { height: 40%; min-height: 0; overflow: hidden; }
+.la-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; border-bottom: 1px solid rgba(29,35,32,.35); padding-bottom: 2px; flex: 0 0 auto; white-space: nowrap; overflow: hidden; }
+.la-title { font-weight: 700; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.la-hint { font-size: 10px; opacity: .75; flex: 0 0 auto; }
+.la-body { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.la-row { display: flex; align-items: center; gap: 6px; min-height: 1.55em; padding: 0 3px; white-space: nowrap; flex: 0 0 auto; }
+.la-row.sel { background: #1d2320; color: #c3cdbd; }
+.la-row.sel-soft { outline: 1px dashed rgba(29,35,32,.6); outline-offset: -1px; }
+.la-nr { font-weight: 700; min-width: 1.6em; }
+.la-lbl { flex: 0 0 auto; }
+.la-val { flex: 1 1 auto; text-align: right; overflow: hidden; font-family: "Times New Roman", Georgia, serif; font-size: 1.12em; display: flex; justify-content: flex-end; align-items: center; }
+.la-dim { opacity: .45; }
+.la-intro { font-size: 12px; padding: 1px 3px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
+.la-grid { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 13px; }
+.la-grid th { font-weight: 700; font-size: 11px; border-bottom: 1px solid rgba(29,35,32,.4); padding: 1px 2px; }
+.la-grid tr > th:first-child { width: 1.8em; border-bottom: 0; border-right: 1px solid rgba(29,35,32,.4); text-align: right; padding-right: 4px; }
+.la-grid td { padding: 1px 4px; height: 1.6em; text-align: right; white-space: nowrap; overflow: hidden; font-family: "Times New Roman", Georgia, serif; font-size: 1.08em; border-bottom: 1px dotted rgba(29,35,32,.25); }
+.la-grid td.sel { background: #1d2320; color: #c3cdbd; }
+.la-mat { border-collapse: collapse; margin-left: auto; border-left: 2px solid currentColor; border-right: 2px solid currentColor; }
+.la-mat td { padding: 0 6px; text-align: right; font-family: "Times New Roman", Georgia, serif; }
+.la-msg { font: 700 12px/1.3 -apple-system, sans-serif; flex: 0 0 auto; }
+.la-msg[hidden], .la-edit[hidden] { display: none; }
+.la-edit { flex: 0 0 auto; border-top: 1px solid rgba(29,35,32,.35); padding-top: 2px; min-height: 1.6em; display: flex; align-items: center; overflow: hidden; white-space: nowrap; font: 17px "Times New Roman", Georgia, serif; }
+.la-canvas { width: 100%; flex: 1 1 auto; min-height: 0; display: block; }
+.la-row .nf, .la-grid .nf { font-size: .85em; }
+.bn { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.bn-row { display: flex; gap: 8px; align-items: baseline; }
+.bn-row .bn-l { font: 700 10px -apple-system, sans-serif; opacity: .7; }
+.bn-row:not(:first-child) { font-size: 12px; }

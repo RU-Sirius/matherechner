@@ -3,6 +3,7 @@
 import * as M from "./mx.js";
 import { h } from "./ui.js";
 import { svgIcon } from "./icons.js";
+import { createLcdApp } from "./lcdmodes.js";
 
 const math = M.math;
 const CUR = "__c__", BOX = "__p__";
@@ -126,14 +127,16 @@ export function schoolCalc(menuItems = []) {
   const lcd = h("div", { class: "lcd" }, status, inLine, outLine);
 
   function paint() {
-    status.replaceChildren(...[shift && "S", alpha && "A", sto && "STO", rcl && "RCL", vars.M ? "M" : "", cfg.deg ? "D" : "R",
+    status.replaceChildren(...[shift && "S", alpha && "A", sto && "STO", rcl && "RCL", vars.M ? "M" : "", cm.cmplx && "CMPLX", cm.base !== 10 && BASE_NAME[cm.base], cfg.deg ? "D" : "R",
       cfg.fmt === "fix" ? `FIX${cfg.digits}` : cfg.fmt === "sci" ? `SCI${cfg.digits}` : "", cfg.exact ? "Math" : "Linear"].filter(Boolean).map((t) => span("st", t)));
     inLine.replaceChildren(text || !done ? natural(text, done ? null : cur) : span("nc", ""));
     if (!res) { outLine.replaceChildren(); return; }
     if (res.error) { outLine.replaceChildren(span("lcd-err", res.error)); return; }
     let node;
     const arr = res.value?.toArray ? res.value.toArray() : Array.isArray(res.value) ? res.value : null;
-    if (res.special) node = span("nc fx-special", res.special);
+    if (res.node) node = res.node;
+    else if (res.special) node = span("nc fx-special", res.special);
+    else if (cm.cmplx && res.isComplex) { const f = M.complexForms(res.value, cfg.deg); node = span("nc", showExact ? f.cart : f.polar); }
     else if (arr && arr.length === 2 && /^\s*(Pol|Rec|divR)\(/.test(text)) {
       const [p, q] = arr.map(Number), f = (v) => M.num(v, 10), kind = text.trim().slice(0, 3);
       node = span("nc fx-special", kind === "Pol" ? `r = ${f(p)},  θ = ${f(q)}` : kind === "Rec" ? `x = ${f(p)},  y = ${f(q)}` : `Q = ${f(p)},  R = ${f(q)}`);
@@ -156,7 +159,7 @@ export function schoolCalc(menuItems = []) {
       done = false; res = null; engOn = false; showDms = false;
     }
     // Variable/Funktion direkt nach einem Buchstaben: Leerzeichen = implizites Mal (A x statt Name „Ax“)
-    if (/^[A-Za-zπ]/.test(t) && /[A-Za-z]/.test(text[cur - 1] ?? "")) t = " " + t;
+    if (cm.base === 10 && /^[A-Za-zπ]/.test(t) && /[A-Za-z]/.test(text[cur - 1] ?? "")) t = " " + t;
     // Komma bzw. „)“ einer Vorlage nicht doppeln: steht es schon an der Schreibmarke, nur darüber springen
     if ((t === "," || t === ")") && text[cur] === t) { cur++; hIdx = null; return paint(); }
     text = text.slice(0, cur) + t + text.slice(cur);
@@ -199,7 +202,7 @@ export function schoolCalc(menuItems = []) {
     if (!text.trim()) return;
     text = M.autoClose(text); // auch in der Anzeige ergänzen
     try {
-      const r = M.evaluate(text, { deg: cfg.deg, scope: vars }); // Zuweisungen (A = 5) landen direkt in vars
+      const r = cm.base !== 10 ? baseEval(text) : M.evaluate(text, { deg: cfg.deg, scope: vars }); // Zuweisungen (A = 5) landen direkt in vars
       res = r; showExact = cfg.exact; engOn = false; engShift = 0; showDms = false; showMixed = false;
       const arr = r.value?.toArray ? r.value.toArray() : Array.isArray(r.value) ? r.value : null;
       if (arr && arr.length === 2 && /^\s*(Pol|Rec)\(/.test(text)) { vars.X = Number(arr[0]); vars.Y = Number(arr[1]); vars.Ans = vars.X; save(); }
@@ -208,7 +211,7 @@ export function schoolCalc(menuItems = []) {
     done = true; hIdx = null; paint();
   }
   function histMove(d) {
-    if (mode !== "comp") return fieldOp(d < 0 ? "prev" : "next");
+    if (mode !== "comp") return fieldOp(d < 0 ? "up" : "down");
     if (!hist.length) return;
     hIdx = hIdx === null ? (d < 0 ? hist.length - 1 : null) : hIdx + d;
     if (hIdx === null || hIdx < 0 || hIdx >= hist.length) { hIdx = hIdx < 0 ? 0 : null; if (hIdx === null) return; }
@@ -217,6 +220,7 @@ export function schoolCalc(menuItems = []) {
   // Variable antippen: je nach Zustand speichern, abrufen oder einfügen
   function variable(name) {
     if (mode !== "comp") { alpha = false; return fieldOp("insert", name); }
+    if (cm.base === 16 && /^[A-F]$/.test(name)) { alpha = false; return insert(name); } // Hex-Ziffern
     if (sto) { exeIfNeeded(); vars[name] = vars.Ans ?? 0; sto = false; alpha = false; save(); res = { value: vars[name], decimal: M.num(Number(vars[name])), exact: null }; text = `Ans→${name}`; done = true; return paint(); }
     if (rcl) { rcl = false; alpha = false; try { res = M.evaluate(name, { scope: vars }); } catch { res = { error: "Variablenfehler" }; } text = name; done = true; return paint(); }
     alpha = false; insert(name);
@@ -225,49 +229,49 @@ export function schoolCalc(menuItems = []) {
   // ---------- Tasten ----------
   // [Hauptbeschriftung, Hauptaktion, SHIFT-Beschriftung, SHIFT-Aktion, ALPHA-Variable, Klasse]
   // ---------- Modi im Display: MENU-Übersicht und Funktionen, bedient über das Tastenfeld ----------
-  let mode = "comp", activeInput = null;
+  let mode = "comp";
+  const cm = { cmplx: false, base: 10 };
   const scrHead = h("div", { class: "scr-head" }), scrBody = h("div", { class: "scr-body" });
   const screen = h("div", { class: "lcd lcd-screen", hidden: "" }, scrHead, scrBody);
-  const fields = () => [...scrBody.querySelectorAll('input[type="text"]')];
-  // Systemtastatur unterdrücken – eingegeben wird über das Rechner-Tastenfeld
-  const prep = () => fields().forEach((i) => { if (i.getAttribute("inputmode") !== "none") i.setAttribute("inputmode", "none"); });
-  new MutationObserver(prep).observe(scrBody, { childList: true, subtree: true });
-  scrBody.addEventListener("focusin", (e) => { if (e.target.matches('input[type="text"]')) { activeInput = e.target; mark(); } });
-  const mark = () => fields().forEach((i) => i.classList.toggle("fx-active", i === activeInput));
-  function focusField(inp) { if (!inp) return; activeInput = inp; inp.focus({ preventScroll: true }); inp.scrollIntoView({ block: "nearest" }); mark(); }
+  // Modi im Display (Gleichung, Matrix, Statistik …): eigene LCD-Bildschirme, bedient über das Tastenfeld
+  const app = createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp: (o) => showComp(o) });
+  app.setMenuRenderer(() => showMenu());
+  // Tasten im Modus-Bildschirm: Eingabe, Cursor, DEL, AC, =, OPTN an den Modus weiterreichen
   function fieldOp(op, t) {
-    if (mode === "menu") return;
-    if (!activeInput || !scrBody.contains(activeInput)) { const f = fields(); activeInput = (op === "prev" ? f[f.length - 1] : f[0]) ?? null; if (!activeInput) return; if (op === "prev" || op === "next") return focusField(activeInput); }
-    const inp = activeInput, v = inp.value, s0 = inp.selectionStart ?? v.length, e0 = inp.selectionEnd ?? s0;
-    const setV = (nv, pos) => { inp.value = nv; inp.setSelectionRange(pos, pos); inp.dispatchEvent(new Event("input", { bubbles: true })); };
-    if (op === "insert" && (t === "," || t === ")") && v[s0] === t && s0 === e0) { inp.setSelectionRange(s0 + 1, s0 + 1); return focusField(inp); }
-    if (op === "insert" && /^[A-Za-zπ]/.test(t) && /[A-Za-z]/.test(v[s0 - 1] ?? "")) t = " " + t;
-    if (op === "insert") { const slot = t.search(/\(\)|\(,|,,|,\)/); setV(v.slice(0, s0) + t + v.slice(e0), s0 + (slot >= 0 ? slot + 1 : t.length)); }
-    else if (op === "del") { if (s0 !== e0) setV(v.slice(0, s0) + v.slice(e0), s0); else if (s0 > 0) { let s1 = s0 - 1; if (v[s1] === "(") while (s1 > 0 && ident.test(v[s1 - 1])) s1--; setV(v.slice(0, s1) + v.slice(s0), s1); } }
-    else if (op === "ac") setV("", 0);
-    else if (op === "left") { const q = v.slice(s0 - 3, s0) === ")/(" ? s0 - 3 : v[s0 - 1] === "," ? s0 - 1 : Math.max(0, s0 - 1); inp.setSelectionRange(q, q); }
-    else if (op === "right") { const q = v.startsWith(")/(", s0) ? s0 + 3 : v[s0] === "," ? s0 + 1 : Math.min(v.length, s0 + 1); inp.setSelectionRange(q, q); }
-    else if (op === "next" || op === "prev") { const f = fields(), k = f.indexOf(inp) + (op === "next" ? 1 : -1); if (f[k]) focusField(f[k]); return; } // am Ende bleibt das letzte Feld aktiv
-    focusField(inp);
+    if (mode === "menu") { if (op === "ac") showComp(); return; }
+    app.key({ insert: "ins", del: "del", ac: "ac", left: "left", right: "right", next: "exe", prev: "up", down: "down", optn: "optn" }[op] ?? op, t);
   }
-  function showComp() { mode = "comp"; screen.hidden = true; lcd.hidden = false; activeInput = null; paint(); }
+  function showComp(o) {
+    if (o) { const c = { cmplx: !!o.cmplx, base: o.base ?? 10 }; if (c.cmplx !== cm.cmplx || c.base !== cm.base) { text = ""; cur = 0; res = null; done = false; } Object.assign(cm, c); }
+    mode = "comp"; screen.hidden = true; app.el.hidden = true; lcd.hidden = false; paint();
+  }
   function showMenu() {
-    mode = "menu"; lcd.hidden = true; screen.hidden = false; activeInput = null;
+    mode = "menu"; lcd.hidden = true; app.el.hidden = true; screen.hidden = false;
     scrHead.replaceChildren(span("scr-title", "MENU – Modus wählen"));
-    let nr = 0;
-    const tile = (key, label, fn) => { nr++; return h("button", { class: "scr-tile", onclick: fn, "data-nr": nr }, h("span", { class: "scr-ico" }, svgIcon(key)), span("scr-lbl", label), nr <= 9 ? span("scr-nr", String(nr)) : null); };
-    scrBody.replaceChildren(h("div", { class: "scr-grid" }, tile("calc", "Berechnen", showComp),
-      ...menuItems.map(([key, label, view, short]) => tile(key, short ?? label.replace(/\s*\(.*\)$/, ""), () => showTool(key, label, view)))));
+    scrBody.replaceChildren(h("div", { class: "scr-grid" }, ...app.modes.map(([key, label], i) =>
+      h("button", { class: "scr-tile", "data-nr": i + 1, onclick: () => openMode(i) }, h("span", { class: "scr-ico" }, svgIcon(key)), span("scr-lbl", label), i < 9 ? span("scr-nr", String(i + 1)) : null))));
     scrBody.scrollTop = 0;
   }
-  function pickTile(k) { const t = scrBody.querySelector(`.scr-tile[data-nr="${k}"]`); if (t) t.click(); }
-  function showTool(key, label, view) {
-    mode = key; lcd.hidden = true; screen.hidden = false; activeInput = null;
-    scrHead.replaceChildren(h("button", { class: "scr-back", onclick: showMenu }, "◀ MENU"), span("scr-title", label));
-    let nodes; try { nodes = view(); } catch (e) { nodes = [span("lcd-err", "Fehler beim Öffnen")]; }
-    scrBody.replaceChildren(...(Array.isArray(nodes) ? nodes : [nodes]));
-    scrBody.scrollTop = 0; prep();
-    setTimeout(() => focusField(fields()[0]), 0);
+  function openMode(i) {
+    const key = app.modes[i][0];
+    if (key === "calc" || key === "complex") return app.open(i);
+    mode = "app"; screen.hidden = true; lcd.hidden = true; app.el.hidden = false; app.open(i);
+  }
+  function pickTile(k) { if (k <= app.modes.length) openMode(k - 1); }
+  // Basis-N: Zahlen in der gewählten Basis eingeben, ganzzahlig rechnen
+  const BASE_NAME = { 16: "HEX", 2: "BIN", 8: "OCT", 10: "DEC" };
+  function baseEval(src) {
+    const digits = { 2: /^[01]+$/, 8: /^[0-7]+$/, 16: /^[0-9A-F]+$/ }[cm.base];
+    const conv = M.normalize(src).replace(/\bAns\b/g, `(${Math.trunc(Number(vars.Ans ?? 0))})`).replace(/\b[0-9A-F]+\b/g, (tok) => {
+      if (!digits.test(tok)) throw new Error("Syntax");
+      return `(${parseInt(tok, cm.base)})`;
+    });
+    const v = math.evaluate(conv); // Ergebnis wird ganzzahlig abgeschnitten
+    const n = typeof v === "number" ? Math.trunc(v) : NaN;
+    if (!Number.isSafeInteger(n)) throw new Error("Math");
+    vars.Ans = n; save();
+    const row = (b) => span("bn-row", span("bn-l", BASE_NAME[b]), span("bn-v", (n < 0 ? "−" : "") + Math.abs(n).toString(b).toUpperCase()));
+    return { value: n, decimal: String(n), exact: null, node: h("span", { class: "bn" }, row(cm.base), ...[10, 16, 2, 8].filter((b) => b !== cm.base).map(row)) };
   }
   const COMP_ONLY = new Set(["S⇔D", "ENG", "STO", "M+", "°′″", "CALC"]);
   const I = (t) => () => insert(t);
@@ -325,7 +329,7 @@ export function schoolCalc(menuItems = []) {
     ["SHIFT", toggleShift, "", null, null, "k-shift"], ["ALPHA", toggleAlpha, "", null, null, "k-alpha"],
     ["◀", left, "", null, null, "k-nav"], ["▶", right, "", null, null, "k-nav"], ["▲", () => histMove(-1), "", null, null, "k-nav"], ["▼", () => histMove(1), "", null, null, "k-nav"],
 
-    ["OPTN", () => openOptn(), "", null, null, "k-sys"], ["CALC", () => calcPrompt(false), "SOLVE", () => calcPrompt(true), ["=", I("=")]],
+    ["OPTN", () => (mode === "comp" ? openOptn() : fieldOp("optn")), "", null, null, "k-sys"], ["CALC", () => calcPrompt(false), "SOLVE", () => calcPrompt(true), ["=", I("=")]],
     ["∫▢", I("integral(,,)"), "d/dx", I("ddx(,)"), null], ["x", I("x"), "Σ", I("sigma(,,)"), ["Π", I("product(,,)")]],
     ["MENU", () => openMenu(), "", null, null, "k-sys"], ["SETUP", () => openSetup(), "", null, null, "k-sys"],
 
@@ -385,8 +389,13 @@ export function schoolCalc(menuItems = []) {
   const onKey = (e) => {
     if (!document.body.contains(lcd)) return document.removeEventListener("keydown", onKey);
     if (e.metaKey || e.ctrlKey) return;
-    if (mode !== "comp") { if (e.key === "Enter") { e.preventDefault(); fieldOp("next"); } return; } // in Feldern tippt die Tastatur direkt
     const k = e.key;
+    if (mode !== "comp") { // Modus-Bildschirm: Tastatur wie Rechner-Tastenfeld
+      const map = { Enter: "next", "=": "next", Backspace: "del", Escape: "ac", ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+      if (map[k]) { e.preventDefault(); return fieldOp(map[k]); }
+      if (k.length === 1 && /[0-9a-zA-Z+\-*/^().,!%]/.test(k)) { e.preventDefault(); if (mode === "menu") { if (/[1-9]/.test(k)) pickTile(Number(k)); return; } fieldOp("insert", k === "*" ? "×" : k === "/" ? "÷" : k === "-" ? "−" : k); }
+      return;
+    }
     if (k === "Enter" || k === "=") { e.preventDefault(); exe(); } else if (k === "Backspace") { e.preventDefault(); del(); } else if (k === "Escape") ac();
     else if (k === "ArrowLeft") left(); else if (k === "ArrowRight") right(); else if (k === "ArrowUp") histMove(-1); else if (k === "ArrowDown") histMove(1);
     else if (k.length === 1 && /[0-9a-zA-Z+\-*/^().,!%]/.test(k)) { e.preventDefault(); insert(k === "*" ? "×" : k === "/" ? "÷" : k === "-" ? "−" : k); }
@@ -395,7 +404,7 @@ export function schoolCalc(menuItems = []) {
   setTimeout(paint, 0);
   const fxEl = h("div", { class: "fx" },
     h("div", { class: "fx-top" }, span("fx-brand", "MatheRechner"), span("fx-model", "Schulrechner-Ansicht")),
-    lcd, screen,
+    lcd, screen, app.el,
     h("div", { class: "fx-fn" }, ...fnKeys),
     h("div", { class: "fx-num" }, ...numKeys));
   // Gehäuse an die verfügbare Bildschirmhöhe anpassen – kein Scrollen nötig. Tasten und Schrift skalieren per CSS mit.
