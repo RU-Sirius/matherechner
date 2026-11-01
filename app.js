@@ -1,0 +1,125 @@
+import { LEGAL, h, section, resultRow, navRow, clearCurrentState, setPreset } from "./ui.js";
+import * as V from "./views.js";
+import * as V2 from "./views2.js";
+import { graphView } from "./graph.js";
+import { favorites, saveBar, projectsView, reportView, saves } from "./projects.js";
+import { installView } from "./install.js";
+import { svgIcon } from "./icons.js";
+
+const view = document.getElementById("view");
+const header = document.querySelector("header");
+const titleEl = document.getElementById("title");
+const back = document.getElementById("back");
+back.onclick = () => (location.hash = "");
+const favBtn = document.getElementById("fav");
+
+// Alle Werkzeuge: Schlüssel → [Listenname, Kurztitel, Farbe, Ansicht]
+const G = "#30a46c", B = "#0a84ff", O = "#ff9500", R = "#ff3b30", P = "#af52de", T = "#30b0c7", N = "#8e8e93";
+const TOOLS = {
+  calc: ["Taschenrechner (exakt, Brüche, Wurzeln, π)", "Taschenrechner", G, V.calculator],
+  graph: ["Funktionsplotter mit Schiebereglern", "Funktionsplotter", B, graphView],
+  poly: ["Polynomgleichungen (Grad 2–6)", "Polynomgleichung", O, V.polynomial],
+  ineq: ["Polynom-Ungleichungen", "Ungleichung", O, V.inequality],
+  linsys: ["Lineare Gleichungssysteme (2–4)", "Gleichungssystem", O, V.linsys],
+  solver: ["Gleichung numerisch lösen", "Gleichungslöser", O, V.solver],
+  deriv: ["Ableitung (symbolisch & Wert)", "Ableitung", R, V.derivativeView],
+  integral: ["Bestimmtes Integral", "Integral", R, V.integralView],
+  curve: ["Kurvendiskussion", "Kurvendiskussion", R, V.curveView],
+  sum: ["Summe Σ und Produkt Π", "Summe/Produkt", R, V.sumView],
+  table: ["Wertetabelle", "Wertetabelle", R, V.tableView],
+  matrix: ["Matrizen (det, Inverse, Rang, Eigenwerte)", "Matrizen", P, V2.matrix],
+  vectors: ["Vektoren (2D/3D)", "Vektoren", P, V2.vectors],
+  stats: ["Statistik (1 Variable, Quartile)", "Statistik", T, V2.stats],
+  regression: ["Regression (2 Variablen)", "Regression", T, V2.regressionView],
+  distrib: ["Verteilungen (Normal, Binomial, Poisson)", "Verteilungen", T, V2.distributions],
+  combi: ["Kombinatorik (nCr, nPr, n!)", "Kombinatorik", T, V2.combinatorics],
+  numtheory: ["Teiler, Primfaktoren, ggT & kgV", "Zahlentheorie", G, V2.numberTheory],
+  bases: ["Zahlensysteme (Bin, Okt, Dez, Hex)", "Zahlensysteme", G, V2.bases],
+  complex: ["Komplexe Zahlen (kartesisch ↔ polar)", "Komplexe Zahlen", G, V2.complexView],
+  units: ["Einheiten umrechnen", "Einheiten", N, V2.unitsView],
+  constants: ["Physikalische Konstanten", "Konstanten", N, V2.constants],
+};
+const nav = (key) => navRow(key, TOOLS[key][0], TOOLS[key][2], svgIcon(key));
+const GROUPS = [
+  ["Rechnen", ["calc", "numtheory", "bases", "complex"]],
+  ["Grafik", ["graph"]],
+  ["Gleichungen", ["poly", "ineq", "linsys", "solver"]],
+  ["Analysis", ["deriv", "integral", "curve", "sum", "table"]],
+  ["Lineare Algebra", ["matrix", "vectors"]],
+  ["Statistik & Wahrscheinlichkeit", ["stats", "regression", "distrib", "combi"]],
+  ["Nachschlagen", ["units", "constants"]],
+];
+
+function home() {
+  const favs = favorites.list().filter((k) => k in TOOLS);
+  const nSaved = saves.list().length;
+  return [
+    ...(favs.length ? section("★ Favoriten", favs.map(nav)) : []),
+    ...section("", [navRow("projects", `Projekte & gespeicherte Berechnungen${nSaved ? ` (${nSaved})` : ""}`, N, svgIcon("projects"))]),
+    ...GROUPS.flatMap(([title, keys]) => section(title, keys.map(nav))),
+    ...section("", [navRow("install", "App installieren (iPhone, iPad, Mac)", N, svgIcon("install")), navRow("settings", "Einstellungen & Lizenzen", N, svgIcon("settings"))]),
+    h("div", { class: "credit" }, "Built by R. U. Sirius?"),
+  ];
+}
+
+function settingsView() {
+  return [
+    ...section("Haftungshinweis", [h("div", { class: "row" }, h("span", { class: "hint" }, LEGAL))]),
+    ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
+      "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
+    ...section("", [resultRow("Version", "1.0.0 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
+  ];
+}
+
+// ---------- Routing ----------
+const PAGES = { settings: ["Einstellungen", settingsView], projects: ["Projekte", projectsView], install: ["App installieren", installView] };
+const NO_SAVEBAR = new Set(["calc", "constants"]);
+function route() {
+  const [key, arg] = location.hash.slice(1).split("/");
+  clearCurrentState();
+  let title, nodes, isTool = false;
+  if (key in TOOLS) { title = TOOLS[key][1]; nodes = TOOLS[key][3](); isTool = true; }
+  else if (key in PAGES) { title = PAGES[key][0]; nodes = PAGES[key][1](); }
+  else if (key === "report" && arg) { title = "Projektbericht"; nodes = reportView(decodeURIComponent(arg)); }
+  else { title = "MatheRechner"; nodes = home(); }
+  const isHome = title === "MatheRechner";
+  titleEl.textContent = title;
+  header.classList.toggle("sub", !isHome);
+  back.hidden = isHome;
+  favBtn.hidden = !isTool;
+  if (isTool) {
+    const set = () => { favBtn.textContent = favorites.has(key) ? "★" : "☆"; };
+    set();
+    favBtn.onclick = () => { favorites.toggle(key); set(); };
+  }
+  view.replaceChildren(...nodes);
+  setPreset(null);
+  if (isTool && !NO_SAVEBAR.has(key)) {
+    view.append(saveBar(key, title, view), h("div", { class: "print-only" }, `MatheRechner – Built by R. U. Sirius? · ${LEGAL}`));
+  }
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+route();
+
+// Haftungshinweis beim ersten Start bestätigen lassen.
+if (localStorage.getItem("mx:legalAccepted") !== "1") {
+  const overlay = h("div", { class: "modal", role: "dialog", "aria-modal": "true" },
+    h("div", { class: "modal-box" },
+      h("h2", {}, "Bitte beachten"),
+      h("p", {}, LEGAL),
+      h("button", { class: "modal-btn", onclick: () => { localStorage.setItem("mx:legalAccepted", "1"); overlay.remove(); } }, "Verstanden")));
+  document.body.append(overlay);
+}
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+  // Bei jedem Zurückkehren in die App nach Updates schauen.
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) reg.update(); });
+});
+// Sobald eine neue Version aktiv ist: einmal neu laden, damit sie sofort sichtbar wird.
+// (Nicht beim allerersten Start, da gibt es noch keine alte Version.)
+let reloaded = false;
+const hadController = !!navigator.serviceWorker?.controller;
+navigator.serviceWorker?.addEventListener("controllerchange", () => {
+  if (hadController && !reloaded) { reloaded = true; location.reload(); }
+});
