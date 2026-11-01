@@ -74,6 +74,8 @@ function engine(deg, exact) {
       divR: (a, b) => { const A = n(a), B = n(b); if (!Number.isInteger(A) || !Number.isInteger(B) || B === 0) throw new Error("Math ERROR"); const q = Math.trunc(A / B); return [q, A - q * B]; },
       mixed: (w, num, den) => (n(w) < 0 ? e.subtract(w, e.divide(num, den)) : e.add(w, e.divide(num, den))),
       GCD: (a, b) => e.gcd(a, b), LCM: (a, b) => e.lcm(a, b),
+      // log mit Basis zuerst (Eingabereihenfolge wie im Display: log_b(x)); glatte Ergebnisse exakt
+      logab: (b, x) => { const B = n(b), X = n(x); if (!(B > 0) || B === 1 || !(X > 0)) throw new Error("Math ERROR"); const r = Math.log(X) / Math.log(B), R = Math.round(r); return B ** R === X ? R : r; },
     }, { override: true });
     engines[key] = e;
   }
@@ -84,7 +86,8 @@ function engine(deg, exact) {
 export function normalize(src) {
   return String(src)
     .replace(/×|·/g, "*").replace(/÷|:/g, "/").replace(/−/g, "-").replace(/π/g, "pi").replace(/√\(/g, "sqrt(").replace(/√(\d+(\.\d+)?)/g, "sqrt($1)")
-    .replace(/²/g, "^2").replace(/³/g, "^3").replace(/ℯ/g, "e").replace(/∞/g, "Infinity").replace(/\bAns\b/g, "Ans");
+    .replace(/²/g, "^2").replace(/³/g, "^3").replace(/ℯ/g, "e").replace(/∞/g, "Infinity").replace(/\bAns\b/g, "Ans")
+    .replace(/\)(\s*)(?=[0-9.])/g, ")*$1"); // „10^(2)5“ = 10²·5 wie beim Schulrechner
 }
 
 // Exakte Darstellung: Bruch, Wurzelform a·√b/c oder Vielfaches von π (wenn der Wert das genau trifft).
@@ -153,6 +156,8 @@ export function evaluate(src, { deg = false, scope = {} } = {}) {
     if (math.isFraction(ex) && isSmallRational(ex, 1e9)) { exact = fracStr(ex); mixed = mixedStr(ex); }
   } catch { /* exakte Auswertung nicht möglich */ }
   const decimal = num(dec);
+  // Rundungsreste wie sin 30° = 0,49999999999999994 → ½ (wie im Math-Modus eines Schulrechners)
+  if (!exact && typeof dec === "number" && !Number.isInteger(dec)) { const f = rationalApprox(dec); if (f && Number(f.d) > 1) { exact = fracStr(f); mixed = mixedStr(f); } }
   if (!exact && typeof dec === "number") exact = exactForm(dec);
   if (exact === decimal) exact = null;
   if (typeof dec === "number" || math.isComplex(dec)) scope.Ans = dec;

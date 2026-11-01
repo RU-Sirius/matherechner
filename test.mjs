@@ -129,3 +129,12 @@ console.log("Komplexe Zahlen ok.");
   r = G.tree({ pA: 0.01, pBgA: 0.99, pBgnA: 0.05 }); near(r.pB, 0.0099 + 0.0495); near(r.pAgB, 0.0099 / 0.0594);
   console.log("Geometrie/Test/Baum ok.");
 }
+{
+  const M2 = await import("./mx.js");
+  const ev = (t) => M2.evaluate(t, { deg: true });
+  assert.equal(ev("sin(30)").exact, "1/2"); assert.equal(ev("cos(60)").exact, "1/2"); assert.equal(ev("0.1+0.2").exact, "3/10");
+  assert.equal(ev("logab(2,8)").value, 3); assert.equal(ev("logab(10,1000)").value, 3); near(ev("logab(3,10)").value, Math.log(10) / Math.log(3));
+  assert.equal(ev("10^(2)5").value, 500); assert.equal(ev("sqrt(4)2").value, 4); assert.equal(ev("nCr(5,2)").value, 10);
+  assert.throws(() => ev("logab(1,5)"));
+  console.log("Schulrechner-Feinschliff ok.");
+}

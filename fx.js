@@ -47,6 +47,11 @@ function render(node) {
   }
   if (n.isFunctionNode) {
     const name = n.fn.name ?? String(n.fn), a = n.args;
+    // Schreibmarke direkt vor (oder hinter) einem Funktionsnamen, z. B. ◀ vor ∫
+    if (name.includes(CUR)) {
+      const inner = render(new math.FunctionNode(new math.SymbolNode(name.replace(CUR, "")), a));
+      return name.endsWith(CUR) ? span("nm", inner, span("caret", "")) : span("nm", span("caret", ""), inner);
+    }
     const r = (k) => render(strip(a[k]));
     if (name === "sqrt") return root(r(0));
     if (name === "nthRoot" || name === "root") return root(r(0), a[1] ? r(1) : null);
@@ -54,14 +59,15 @@ function render(node) {
     if (name === "abs") return span("nm", "|", r(0), "|");
     if (name === "exp") return span("npw", "e", sup(r(0)));
     if (name === "log" && a.length === 2) return span("nm", "log", sub(r(1)), paren(r(0)));
+    if (name === "logab") return span("nm", "log", sub(r(0)), paren(a[1] ? r(1) : ""));
     if (name === "integral") return span("nint", span("nis", "∫"), span("nil", span("nih", a[2] ? r(2) : ""), span("nil2", a[1] ? r(1) : "")), r(0), span("nop", "dx"));
     if (name === "ddx") return span("nm", frac("d", "dx"), paren(r(0)), span("nbar", sub(span("nm", "x=", a[1] ? r(1) : ""))));
     if (name === "sigma") return span("nint", span("nsig", span("nih", a[2] ? r(2) : ""), span("nsigs", "Σ"), span("nil2", span("nm", "x=", a[1] ? r(1) : ""))), paren(r(0)));
-    if (name === "nCr" || name === "nPr") return span("nm", r(0), span("ncr", name[1]), r(1));
+    if (name === "nCr" || name === "nPr" || name === "divR") { const k = (i) => (a[i] ? (a[i].isOperatorNode ? paren(render(a[i])) : render(a[i])) : ""); // (2+3) C 2 mit Klammer
+      return span("nm", k(0), name === "divR" ? span("nop", "÷R") : span("ncr", name[1]), k(1)); }
     if (name === "mixed") return span("nm", r(0), frac(r(1), r(2)));
-    if (name === "divR") return span("nm", r(0), span("nop", "÷R"), r(1));
     if (name === "product") return span("nint", span("nsig", span("nih", a[2] ? r(2) : ""), span("nsigs", "Π"), span("nil2", span("nm", "x=", a[1] ? r(1) : ""))), paren(r(0)));
-    if (name === "random") return span("nc", "Ran#");
+    if (name === "random") return span("nm", span("nc", "Ran#"), ...(a.some((x) => x.toString().includes(CUR)) ? [span("caret", "")] : []));
     return span("nm", span("nfn", FN[name] ?? name), paren(span("nm", ...a.flatMap((x, i) => (i ? [", ", render(strip(x))] : [render(strip(x))])))));
   }
   if (n.isAssignmentNode) return span("nm", render(n.value), span("nop", "→"), n.object?.name ?? "");
@@ -71,7 +77,13 @@ function render(node) {
 // Vorschau der Eingabe mit Cursor (fehlende Klammern ergänzen, leere Felder als Kästchen).
 export function previewNode(text, cursor) {
   let t = M.normalize(text.slice(0, cursor)) + CUR + M.normalize(text.slice(cursor));
-  t = t.replace(/\(\)/g, `(${BOX})`).replace(/\(,/g, `(${BOX},`).replace(/,\)/g, `,${BOX})`).replace(/,,/g, `,${BOX},`).replace(/,(__c__)\)/g, ",$1)");
+  const open0 = (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
+  if (open0 > 0) t += ")".repeat(open0); // fehlende Klammern zuerst ergänzen, dann leere Felder erkennen
+  // leere Felder einer Vorlage als Kästchen □
+  t = t.replace(/\(\)/g, `(${BOX})`).replace(/\(,/g, `(${BOX},`).replace(/,\)/g, `,${BOX})`).replace(/,,/g, `,${BOX},`).replace(/,,/g, `,${BOX},`);
+  // fehlende Operanden wie beim Schulrechner als □ zeigen: „^2“ am Anfang → □², „2+“ → 2+□
+  t = t.replace(/(^|[(,+\-*/^])(\s*)(?=[\^*/!])/g, `$1$2${BOX}`);
+  t = t.replace(/([+\-*/^])(\s*)(?=$|[),])/g, `$1$2${BOX}`);
   const open = (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
   if (open > 0) t += ")".repeat(open);
   return math.parse(t);
@@ -89,6 +101,7 @@ export function natural(text, cursor = null) {
 }
 // Ergebnisdarstellung (exakte Form → natürliche Darstellung)
 function exactNode(str) {
+  if (/^[−-]/.test(str) && !/[+−-]/.test(str.slice(1).trim())) return span("nm", "−", exactNode(str.slice(1).trim())); // −½ statt (−1)/2
   if (/^−?\d+ \d+\/\d+$/.test(str)) { const [w, f] = str.split(" "); const [p, q] = f.split("/"); return span("nm", w, frac(p, q)); }
   // Leerzeichen statt * → implizite Multiplikation, wird ohne „ד dargestellt (2√3, 3π/4)
   const expr = str.replace(/−/g, "-").replace(/(\d*)√(\d+)/g, (_, k, v) => `${k ? k + " " : ""}sqrt(${v})`).replace(/(\d*)π/g, (_, k) => (k ? `${k} pi` : "pi"));
@@ -108,7 +121,8 @@ function formatNumber(v, cfg, engShift = 0, engOn = false) {
   if (v !== 0 && (Math.abs(v) >= 1e10 || Math.abs(v) < 1e-9)) { const [m, e] = v.toExponential(9).split("e"); return { mant: String(+m), exp: Number(e) }; }
   return { text: String(+v.toPrecision(10)) };
 }
-const numNode = (f) => (f.exp !== undefined ? span("nm", f.mant, span("nop", "×"), span("npw", "10", sup(String(f.exp)))) : span("nc", f.text));
+const mi = (s) => String(s).replace(/-/g, "−"); // echtes Minuszeichen in der Anzeige
+const numNode = (f) => (f.exp !== undefined ? span("nm", mi(f.mant), span("nop", "×"), span("npw", "10", sup(mi(f.exp)))) : span("nc", mi(f.text)));
 function dms(v) {
   const s = v < 0 ? "−" : "", a = Math.abs(v), d = Math.floor(a), mm = Math.floor((a - d) * 60), ss = ((a - d) * 60 - mm) * 60;
   return `${s}${d}°${mm}′${+ss.toFixed(2)}″`;
@@ -146,14 +160,28 @@ export function schoolCalc(menuItems = []) {
     else if (showDms && typeof res.value === "number") node = span("nc", dms(res.value));
     else if (engOn && typeof res.value === "number") node = numNode(formatNumber(res.value, cfg, engShift, true));
     else if (showExact && res.exact && cfg.fmt === "norm") node = exactNode(res.exact);
-    else node = typeof res.value === "number" ? numNode(formatNumber(res.value, cfg)) : span("nc", res.decimal);
+    else node = typeof res.value === "number" ? numNode(formatNumber(res.value, cfg)) : span("nc", mi(res.decimal));
     outLine.replaceChildren(node);
   }
 
   // ---------- Eingabe-Hilfen ----------
   const ident = /[A-Za-z_]/;
+  // nCr, nPr und ÷R stehen wie beim Schulrechner zwischen zwei Zahlen: „5 nCr 2“
+  const INFIX = new Set(["nCr(,)", "nPr(,)", "divR(,)"]);
+  function operandStart(s, end) {
+    let i = end;
+    if (s[i - 1] === ")") { let d = 0; for (i = end - 1; i >= 0; i--) { if (s[i] === ")") d++; else if (s[i] === "(" && --d === 0) break; } if (i < 0) return null; while (i > 0 && ident.test(s[i - 1])) i--; return i; }
+    if (/[\d.]/.test(s[i - 1] ?? "")) { while (i > 0 && /[\d.]/.test(s[i - 1])) i--; return i; }
+    if (/[A-Za-zπ!²³]/.test(s[i - 1] ?? "")) { while (i > 0 && /[A-Za-zπ]/.test(s[i - 1])) i--; return i; }
+    return null;
+  }
   function insert(t) {
     if (mode !== "comp") return fieldOp("insert", t);
+    if (INFIX.has(t)) {
+      if (done) { text = "Ans"; cur = 3; done = false; res = null; }
+      const st = operandStart(text, cur);
+      if (st !== null) { const name = t.slice(0, t.indexOf("(")); text = `${text.slice(0, st)}${name}(${text.slice(st, cur)},)${text.slice(cur)}`; cur = st + name.length + 1 + (cur - st) + 1; hIdx = null; return paint(); }
+    }
     if (done) { // nach einem Ergebnis: Operator setzt mit Ans fort, sonst neue Eingabe
       // Rechenzeichen setzen mit Ans fort; das Vorzeichen (−) und alles andere beginnt neu
       if (/^[+−×÷*/^!]/.test(t)) { text = "Ans"; cur = 3; } else { text = ""; cur = 0; }
@@ -165,7 +193,7 @@ export function schoolCalc(menuItems = []) {
     if ((t === "," || t === ")") && text[cur] === t) { cur++; hIdx = null; return paint(); }
     text = text.slice(0, cur) + t + text.slice(cur);
     // Schreibmarke ins erste leere Feld einer Vorlage, sonst ans Ende des Eingefügten
-    const slot = t.search(/\(\)|\(,|,,|,\)/);
+    const slot = t === "random()" ? -1 : t.search(/\(\)|\(,|,,|,\)/); // Ran# hat kein Eingabefeld
     cur += slot >= 0 ? slot + 1 : t.length;
     hIdx = null; paint();
   }
@@ -192,9 +220,22 @@ export function schoolCalc(menuItems = []) {
     if (mode !== "comp") return fieldOp("del");
     if (done) { done = false; cur = text.length; }
     if (cur === 0) return paint();
+    if (text.slice(cur - 3, cur) === ")/(") { cur -= 3; return paint(); } // im Nenner vorne: zurück in den Zähler
     let s = cur - 1;
-    if (text[s] === "(") while (s > 0 && ident.test(text[s - 1])) s--; // ganzen Funktionsnamen löschen
-    else if (ident.test(text[s])) while (s > 0 && ident.test(text[s - 1])) s--;
+    if (text[s] === "(") {
+      while (s > 0 && ident.test(text[s - 1])) s--; // ganzen Funktionsnamen löschen …
+      // … und die zugehörige schließende Klammer; Inhalt des ersten Feldes bleibt stehen (wie beim Schulrechner)
+      let d = 0, close = -1, comma = -1;
+      for (let i = cur - 1; i < text.length; i++) { if (text[i] === "(") d++; else if (text[i] === ")") { if (--d === 0) { close = i; break; } } else if (text[i] === "," && d === 1 && comma < 0) comma = i; }
+      if (close >= 0) {
+        let keep = text.slice(cur, comma >= 0 ? comma : close), rest = text.slice(close + 1);
+        if (s === cur - 1 && rest.startsWith("/(")) { // Bruch: Zähler und Nenner als a/b behalten
+          let d2 = 0, c2 = -1; for (let i = close + 2; i < rest.length + close + 1; i++) { const ch = text[i]; if (ch === "(") d2++; else if (ch === ")" && --d2 === 0) { c2 = i; break; } }
+          if (c2 >= 0) { const den = text.slice(close + 3, c2); keep = den ? `${keep}/${den}` : keep; rest = text.slice(c2 + 1); }
+        }
+        text = text.slice(0, s) + keep + rest; cur = s; hIdx = null; return paint();
+      }
+    } else if (ident.test(text[s])) while (s > 0 && ident.test(text[s - 1])) s--;
     text = text.slice(0, s) + text.slice(cur); cur = s; paint();
   }
   function ac() { if (mode !== "comp") return fieldOp("ac"); text = ""; cur = 0; res = null; done = false; engOn = false; showDms = false; hIdx = null; paint(); }
@@ -336,7 +377,7 @@ export function schoolCalc(menuItems = []) {
     ["MENU", () => openMenu(), "", null, null, "k-sys"], ["SETUP", () => openSetup(), "", null, null, "k-sys"],
 
     ["▢/▢", I("()/()"), "▢▢/▢", I("mixed(,,)"), ["÷R", I("divR(,)")]], ["√▢", I("sqrt()"), "³√▢", I("nthRoot(,3)"), null], ["x²", I("^2"), "x³", I("^3"), null],
-    ["x^▢", I("^()"), "ⁿ√▢", I("nthRoot(,)"), null], ["log▢", I("log(,)"), "10^▢", I("10^()"), null], ["ln", I("ln("), "e^▢", I("e^()"), null],
+    ["x^▢", I("^()"), "ⁿ√▢", I("nthRoot(,)"), null], ["log▢", I("logab(,)"), "10^▢", I("10^()"), null], ["ln", I("ln("), "e^▢", I("e^()"), null],
 
     ["(−)", I("-"), "log", I("log10("), "A"], ["°′″", toggle(() => { showDms = !showDms; }), "FACT", () => fact(), "B"], ["x⁻¹", I("^(-1)"), "x!", I("!"), "C"],
     ["sin", I("sin("), "sin⁻¹", I("asin("), "D"], ["cos", I("cos("), "cos⁻¹", I("acos("), "E"], ["tan", I("tan("), "tan⁻¹", I("atan("), "F"],
