@@ -228,3 +228,4 @@ body.calc-home main { padding-bottom: 0; }
 .bn-row { display: flex; gap: 8px; align-items: baseline; }
 .bn-row .bn-l { font: 700 10px -apple-system, sans-serif; opacity: .7; }
 .bn-row:not(:first-child) { font-size: 12px; }
+.la-calc-out { flex: 1 1 auto; display: flex; justify-content: flex-end; align-items: center; overflow: hidden; font-size: 1.15em; padding: 2px 4px; }

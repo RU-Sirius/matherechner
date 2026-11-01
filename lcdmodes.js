@@ -51,6 +51,9 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
           ...Array.from({ length: cols }, (_, c) => h("td", { class: r === s.sel[0] && c === s.sel[1] ? "sel" : "", onclick: () => { commitIfEditing(); s.sel = [r, c]; render(); } }, valNode(s.get(r, c))))))));
     } else if (s.type === "result") {
       body.replaceChildren(...s.lines.map(([l, v], i) => h("div", { class: "la-row" + (i === s.sel ? " sel-soft" : "") }, span("la-lbl", l), span("la-val", v instanceof Node ? v : valNode(v)))));
+    } else if (s.type === "calc") {
+      const o = s.out;
+      body.replaceChildren(h("div", { class: "la-calc-out" }, o === null || o === undefined ? span("la-dim", "MatA … über ALPHA A–D oder OPTN") : Array.isArray(o) ? matNode(o) : valNode(o)));
     } else if (s.type === "graph") {
       body.replaceChildren(s.canvas); drawGraph(s);
     }
@@ -64,7 +67,7 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
 
   // ---------- Navigation ----------
   const push = (s) => { stack.push(s); edit = null; msg = ""; render(); };
-  const pop = () => { if (stack.length > 1) { stack.pop(); edit = null; msg = ""; render(); } else showMenu(); };
+  const pop = () => { if (stack.length > 1) { stack.pop(); edit = top().ed ?? null; msg = ""; render(); } else showMenu(); };
   const menu = (title, items, extra = {}) => push({ type: "menu", title, items, sel: 0, ...extra });
   const result = (title, lines, extra = {}) => push({ type: "result", title, lines, sel: 0, hint: "▲▼  AC: zurück", ...extra });
   function pick() { const s = top(); const it = s.items[s.sel]; if (!it) return; try { it[1](); } catch (e) { msg = e.message?.startsWith("Math") ? e.message : "Math ERROR"; render(); } }
@@ -98,12 +101,21 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
   function key(name, t) {
     const s = top(); if (!s) return;
     if (s.type === "graph") return graphKey(s, name, t);
+    if (s.type === "calc") {
+      edit = s.ed;
+      if (name === "ins" && /^[A-D]$/.test(t)) t = `Mat${t}`; // ALPHA A–D
+      if (name === "ac") { if (s.ed.text || s.out !== null) { s.ed.text = ""; s.ed.cur = 0; s.out = null; msg = ""; return render(); } return pop(); }
+      if (name === "exe") { try { msg = ""; s.solve(); } catch (e) { msg = e.message; render(); } return; }
+      if (name === "up" || name === "down") return;
+      if (name === "ins" && s.out !== null && !s.ed.text) s.out = null;
+    }
     if (name === "ins") {
       if (s.type === "menu") { if (/^[1-9]$/.test(t) && Number(t) <= s.items.length) { s.sel = Number(t) - 1; pick(); } return; }
       if (s.type === "result" || s.readonly) return;
       if (!edit) edit = { text: "", cur: 0 };
       const slot = t.search(/\(\)|\(,|,,|,\)/);
       if ((t === "," || t === ")") && edit.text[edit.cur] === t) { edit.cur++; return render(); }
+      if (/^[A-Za-zπ]/.test(t) && /[A-Za-z]/.test(edit.text[edit.cur - 1] ?? "")) t = " " + t; // MatA MatB statt „MatAMatB“
       edit.text = edit.text.slice(0, edit.cur) + t + edit.text.slice(edit.cur); edit.cur += slot >= 0 ? slot + 1 : t.length; msg = ""; return render();
     }
     if (name === "del") { if (edit && edit.cur > 0) { edit.text = edit.text.slice(0, edit.cur - 1) + edit.text.slice(edit.cur); edit.cur--; render(); } return; }
@@ -199,17 +211,46 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
   // ---------- Matrix ----------
   function matStore(name) { store[`mat${name}`] ??= { r: 2, c: 2, d: [["", ""], ["", ""]] }; return store[`mat${name}`]; }
   const matVal = (m) => m.d.map((row) => row.map((v) => M.toFrac(v === "" ? 0 : evNum(v))));
+  const MATS = "ABCD";
   function matrixMenu() {
-    menu("Matrix", [["MatA bearbeiten", () => matSize("A")], ["MatB bearbeiten", () => matSize("B")],
-      ["det(MatA)", () => matOp("det")], ["MatA⁻¹", () => matOp("inv")], ["MatAᵀ", () => matOp("tr")], ["MatA + MatB", () => matOp("add")],
-      ["MatA − MatB", () => matOp("sub")], ["MatA × MatB", () => matOp("mul")], ["Rang & Eigenwerte (MatA)", () => matOp("eig")]]);
+    menu("Matrix", [...[...MATS].map((n) => [`Mat${n} bearbeiten (${matStore(n).r}×${matStore(n).c})`, () => matSize(n)]),
+      ["Matrix-Rechnung (MatA×MatB …)", () => matCalc()], ["Rang & Eigenwerte", () => menu("Rang & Eigenwerte", [...MATS].map((n) => [`Mat${n}`, () => matEig(n)]))]]);
+  }
+  // Rechenbildschirm: Ausdrücke mit MatA–MatD wie beim Schulrechner (ALPHA A–D bzw. OPTN fügt MatA … ein)
+  function matScope() {
+    const sc = { Trn: (x) => math.transpose(x), Ident: (n) => math.identity(Number(n)).toArray(), Rang: (x) => M.rref(x.toArray ? x.toArray() : x).rank };
+    for (const n of MATS) { const m = matStore(n); sc[`Mat${n}`] = matVal(m); }
+    return sc;
+  }
+  function matCalc() {
+    const s = { type: "calc", title: "Matrix-Rechnung", hint: "= rechnen  OPTN", ed: { text: "", cur: 0 }, out: null,
+      optn: () => menu("OPTN – Matrix", [...[...MATS].map((n) => [`Mat${n}`, () => calcIns(`Mat${n}`)]), ["MatAns", () => calcIns("MatAns")], ["det(", () => calcIns("det(")],
+        ["Trn( – transponiert", () => calcIns("Trn(")], ["Ident( – Einheitsmatrix", () => calcIns("Ident(")], ["Rang(", () => calcIns("Rang(")]]),
+      solve: () => {
+        const src = M.autoClose(M.normalize(s.ed.text)); if (!src.trim()) return;
+        const sc = matScope(); if (store.matAns) sc.MatAns = store.matAns.map((r) => r.map((v) => M.toFrac(Number(v))));
+        let v;
+        try { v = math.evaluate(src, sc); } catch (e) { throw new Error(/dimension|size|Dimension/i.test(e.message) ? "Math ERROR: Größen passen nicht" : /singular|Inverse/i.test(e.message) ? "Math ERROR: det = 0" : /Undefined|Unexpected|Parenthesis|Value expected/.test(e.message) ? "Syntax ERROR" : "Math ERROR"); }
+        if (v?.toArray) v = v.toArray();
+        if (Array.isArray(v) && !Array.isArray(v[0])) v = v.map((x) => [x]);
+        if (Array.isArray(v)) store.matAns = v.map((r) => r.map((x) => math.number(x))), persist();
+        s.out = v; edit = s.ed; render();
+      } };
+    push(s); edit = s.ed; render();
+  }
+  function calcIns(t) { pop(); key("ins", t); }
+  function matEig(n) {
+    const m = matStore(n), a = matVal(m), inf = M.matInfo(a.map((r) => r.map((v) => math.number(v))));
+    const ev = inf.eigenvalues ? (inf.eigenvalues.toArray ? inf.eigenvalues.toArray() : inf.eigenvalues) : null;
+    result(`Mat${n}`, [["Rang =", inf.rank], ...(m.r === m.c ? [["det =", inf.det]] : []),
+      ...(ev ? ev.map((v, i) => [`λ${"₁₂₃₄"[i]} =`, typeof v === "number" ? v : math.complex(v)]) : [["", span("nc", "Eigenwerte nur für quadratische Matrizen")]])]);
   }
   function matSize(name) {
     const d = stack.length; // nach dem Bearbeiten zurück ins Matrix-Menü
     menu(`Mat${name}: Zeilen?`, [1, 2, 3, 4].map((r) => [`${r} Zeile${r > 1 ? "n" : ""}`, () => menu(`Mat${name}: Spalten?`, [1, 2, 3, 4].map((c) => [`${c} Spalte${c > 1 ? "n" : ""}`, () => {
       const m = matStore(name);
       m.d = Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => m.d[i]?.[j] ?? "")); m.r = r; m.c = c; persist();
-      stack.length = d; matEdit(name);
+      stack.length = d - 1; matrixMenu(); top().sel = MATS.indexOf(name); matEdit(name); // Menü mit neuer Größe
     }]))]));
   }
   function matEdit(name) {
@@ -219,19 +260,6 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
   }
   function matNode(A) {
     return h("table", { class: "la-mat" }, ...A.map((row) => h("tr", {}, ...row.map((v) => h("td", {}, valNode(v))))));
-  }
-  function matOp(op) {
-    const A = matStore("A"), B = matStore("B"), a = matVal(A);
-    const sq = A.r === A.c;
-    if (op === "det") { if (!sq) throw new Error("Math ERROR: MatA nicht quadratisch"); return result("det(MatA)", [["det =", math.det(a)]]); }
-    if (op === "inv") { if (!sq) throw new Error("Math ERROR"); const d = math.det(a); if (math.equal(d, 0)) return result("MatA⁻¹", [["", span("nc", "Math ERROR: det = 0")]]); return result("MatA⁻¹", [["", matNode(math.inv(a))]]); }
-    if (op === "tr") return result("MatAᵀ", [["", matNode(math.transpose(a))]]);
-    if (op === "eig") { const inf = M.matInfo(a.map((r) => r.map((v) => math.number(v)))); return result("MatA", [["Rang =", inf.rank], ...(inf.eigenvalues ? (inf.eigenvalues.toArray ? inf.eigenvalues.toArray() : inf.eigenvalues).map((v, i) => [`λ${"₁₂₃₄"[i]} =`, typeof v === "number" ? v : math.complex(v)]) : [["", span("nc", "Eigenwerte nur für quadratische Matrizen")]])]); }
-    const b = matVal(B);
-    if ((op === "add" || op === "sub") && (A.r !== B.r || A.c !== B.c)) throw new Error("Math ERROR: Größen verschieden");
-    if (op === "mul" && A.c !== B.r) throw new Error("Math ERROR: Spalten A ≠ Zeilen B");
-    const r = op === "add" ? math.add(a, b) : op === "sub" ? math.subtract(a, b) : math.multiply(a, b);
-    result({ add: "MatA + MatB", sub: "MatA − MatB", mul: "MatA × MatB" }[op], [["", matNode(r)]]);
   }
   // Fehler aus Menüaktionen anzeigen
   const safe = (fn) => () => { try { fn(); } catch (e) { msg = e.message?.startsWith("Math") ? e.message : "Math ERROR"; render(); } };

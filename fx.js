@@ -26,6 +26,7 @@ function render(node) {
   if (n.isConstantNode) return span("nc", String(n.value));
   if (n.isSymbolNode) {
     if (n.name === CUR) return span("caret", "");
+    if (n.name.includes(CUR)) { const [l, r] = n.name.split(CUR); return span("nm", l, span("caret", ""), r); } // Schreibmarke an einem Namen
     if (n.name === BOX) return span("box", "");
     return span(n.name.length === 1 && /[a-zA-Z]/.test(n.name) ? "nv" : "nc", { pi: "π", Infinity: "∞", Ans: "Ans" }[n.name] ?? n.name);
   }
@@ -315,7 +316,8 @@ export function schoolCalc(menuItems = []) {
     res = { value: x, decimal: M.num(x), exact: M.evaluate(String(x)).exact, special: `x = ${M.num(x)}${xs.length > 1 ? `   (${xs.length} Lösungen in [−1000; 1000], Startwert x = ${M.num(x0)})` : ""}` };
     done = true; paint();
   }
-  const openOptn = () => overlay("OPTN", [["sinh", I("sinh(")], ["cosh", I("cosh(")], ["tanh", I("tanh(")], ["sinh⁻¹", I("asinh(")], ["cosh⁻¹", I("acosh(")], ["tanh⁻¹", I("atanh(")],
+  const openOptn = () => cm.cmplx ? overlay("OPTN – Komplex", [["i – imaginäre Einheit", I("i")], ["∠ – Polarform r∠φ (z. B. 5∠30)", I("∠")], ["Re – Realteil", I("re(")], ["Im – Imaginärteil", I("im(")],
+    ["Abs – Betrag", I("abs(")], ["arg – Argument", I("arg(")], ["Konjugiert", I("conj(")]]) : overlay("OPTN", [["sinh", I("sinh(")], ["cosh", I("cosh(")], ["tanh", I("tanh(")], ["sinh⁻¹", I("asinh(")], ["cosh⁻¹", I("acosh(")], ["tanh⁻¹", I("atanh(")],
     ["Rnd – auf Anzeigegenauigkeit runden", () => insert(cfg.fmt === "fix" ? `RndFix(,${cfg.digits})` : "Rnd(")], ["Int – ganzzahliger Teil", I("Int(")], ["Intg – größte ganze Zahl ≤ x", I("Intg(")],
     ["∠ – Polarform r∠φ (z. B. 5∠30)", I("∠")], ["Abs – Betrag", I("abs(")], ["Re – Realteil", I("re(")], ["Im – Imaginärteil", I("im(")], ["arg – Argument", I("arg(")], ["Konjugiert", I("conj(")], ["Π – Produkt", I("product(,,)")]]);
   const openConst = () => overlay("CONST – Konstanten", M.CONSTANTS.map(([key, label]) => [label, I(key)]));
@@ -340,7 +342,7 @@ export function schoolCalc(menuItems = []) {
     ["sin", I("sin("), "sin⁻¹", I("asin("), "D"], ["cos", I("cos("), "cos⁻¹", I("acos("), "E"], ["tan", I("tan("), "tan⁻¹", I("atan("), "F"],
 
     ["STO", () => { sto = true; alpha = true; paint(); }, "RECALL", () => { rcl = true; alpha = true; paint(); }, null],
-    ["ENG", toggle(() => { if (engOn) engShift++; else { engOn = true; engShift = 0; } }), "←ENG", toggle(() => { if (engOn) engShift--; else { engOn = true; engShift = 0; } }), ["i", I("i")]],
+    ["ENG", () => (cm.cmplx ? insert("i") : toggle(() => { if (engOn) engShift++; else { engOn = true; engShift = 0; } })()), "←ENG", toggle(() => { if (engOn) engShift--; else { engOn = true; engShift = 0; } }), ["i", I("i")]],
     ["(", I("("), "Abs", I("abs("), null], [")", I(")"), ",", I(","), "X"],
     ["S⇔D", toggle(() => { showExact = !showExact; engOn = false; showDms = false; showMixed = false; }), "ab/c⇔d/c", toggle(() => { showMixed = !showMixed; }), "Y"],
     ["M+", () => { exeIfNeeded(); vars.M = Number(vars.M) + Number(vars.Ans ?? 0); save(); paint(); }, "M−", () => { exeIfNeeded(); vars.M = Number(vars.M) - Number(vars.Ans ?? 0); save(); paint(); }, "M"],

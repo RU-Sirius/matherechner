@@ -13,15 +13,15 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.5.0)
+## Funktionen (v1.5.1)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
 - **Startseite mit Umschalter „Liste | Rechner“:** Im Rechner-Modus zeigt die App nur das Rechnergehäuse
 - **Rechner-Modi im Display wie bei einem Schulrechner** (MENU, Auswahl per Zifferntaste): keine Eingabefelder, sondern LCD-Bildschirme mit
   nummerierten Menüs, Koeffizienten- und Datentabellen, Bearbeitungszeile unten; ◀▶▲▼ bewegen den Cursor, = übernimmt bzw. rechnet, AC führt zurück
-  - **Berechnen**, **Komplex** (CMPLX; S⇔D wechselt a+bi ↔ r∠θ), **Basis-N** (Eingabe Dez/Hex/Bin/Okt, Ergebnis ganzzahlig in allen vier Systemen)
-  - **Matrix** (MatA/MatB bis 4 × 4 bearbeiten; det, A⁻¹, Aᵀ, A ± B, A × B, Rang, Eigenwerte), **Vektor** (VctA/VctB 2D/3D; Betrag, Skalar-/Kreuzprodukt, Winkel, Summe/Differenz, Einheitsvektor)
+  - **Berechnen**, **Komplex** (CMPLX; i über die Taste ENG, r∠φ über OPTN → ∠; S⇔D wechselt a+bi ↔ r∠θ), **Basis-N** (Eingabe Dez/Hex/Bin/Okt, Ergebnis ganzzahlig in allen vier Systemen)
+  - **Matrix** (vier Matrizen MatA–MatD bis 4 × 4; Matrix-Rechnung mit frei eingegebenen Ausdrücken wie MatA×MatB+MatC, MatA⁻¹, MatA², det(, Trn(, Ident(, Rang(, MatAns – MatA–D über ALPHA A–D oder OPTN; exakte Brüche; Rang, det und Eigenwerte je Matrix), **Vektor** (VctA/VctB 2D/3D; Betrag, Skalar-/Kreuzprodukt, Winkel, Summe/Differenz, Einheitsvektor)
   - **Statistik** (1 Variable oder Regression linear/quadratisch/log/exp/Potenz; x/y-Datentabelle), **Verteilung** (Normal-VD/-VK, Invers Normal, Binomial-VD/-VK, Poisson-VD/-VK)
   - **Tabelle** (f(x), g(x), Start/Ende/Schritt, max. 200 Zeilen), **Gleichung** (Gleichungssystem 2–4 Unbekannte, Polynom Grad 2–6, Ungleichung Grad 1–4)
   - **Plotter** (f und g im Display, Spur mit ◀▶, Zoom mit +/−; immer im Bogenmaß) und **Kurvendiskussion** (f′, f″, Nullstellen, Extrema, Wendepunkte)
