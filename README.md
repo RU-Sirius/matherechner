@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.8.3)
+## Funktionen (v1.8.4)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen

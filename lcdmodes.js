@@ -116,7 +116,7 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
       if (s.type === "menu") { const i = menuIndex(t); if (i !== null && i < s.items.length) { s.sel = i; pick(); } return; }
       if (s.type === "result" || s.readonly) return;
       if (!edit) edit = { text: "", cur: 0 };
-      const slot = t.search(/\(\)|\(,|,,|,\)/);
+      const slot = t === "random()" ? -1 : t.search(/\(\)|\(,|,,|,\)/); // Ran# hat kein Eingabefeld
       if ((t === "," || t === ")") && edit.text[edit.cur] === t) { edit.cur++; return render(); }
       if (/^[A-Za-zπ]/.test(t) && /[A-Za-z]/.test(edit.text[edit.cur - 1] ?? "")) t = " " + t; // MatA MatB statt „MatAMatB“
       edit.text = edit.text.slice(0, edit.cur) + t + edit.text.slice(edit.cur); edit.cur += slot >= 0 ? slot + 1 : t.length; msg = ""; return render();
