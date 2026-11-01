@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.8.2)
+## Funktionen (v1.8.3)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
@@ -81,6 +81,7 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
 - Einheiten umrechnen · physikalische Konstanten
 
 **Arbeiten mit der App**
+- **FIX-Modus:** sehr kleine Werte ≠ 0 (z. B. Konstanten wie mₑ) erscheinen wissenschaftlich statt als „0.000…“
 - **Eingabe:** Formelfelder (z. B. f(x) im Plotter) öffnen immer die volle Tastatur, Zahlenfelder standardmäßig auch (umstellbar in den Einstellungen); Signifikanztest auch bei großem n schnell; Σ/Π, Wertetabelle und Verteilungen frieren bei extremen Grenzen nicht mehr ein
 - **Suche** auf der Startseite (auch nach Synonymen, z. B. „Wallbox“, „FI“, „pq-Formel“); Enter öffnet den ersten Treffer
 - **Zuletzt verwendet**: die letzten Rechner oben auf der Startseite

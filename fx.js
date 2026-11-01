@@ -162,6 +162,8 @@ function formatNumber(v, cfg, engShift = 0, engOn = false) {
     const e0 = (v === 0 ? 0 : Math.floor(Math.log10(Math.abs(v)) / 3) * 3) + engShift * 3;
     return { mant: String(+(v / 10 ** e0).toPrecision(10)), exp: e0 };
   }
+  // FIX: Wert ≠ 0, der gerundet nur aus Nullen bestünde (z. B. mₑ), wissenschaftlich zeigen statt „0.000…“
+  if (cfg.fmt === "fix" && Math.abs(v) < 0.5 * 10 ** -cfg.digits && v !== 0) { const [m, e] = v.toExponential(9).split("e"); return { mant: String(+m), exp: Number(e) }; }
   if (cfg.fmt === "fix") return { text: v.toFixed(cfg.digits) };
   if (cfg.fmt === "sci") { const [m, e] = v.toExponential(Math.max(0, cfg.digits - 1)).split("e"); return { mant: m, exp: Number(e) }; }
   if (v !== 0 && (Math.abs(v) >= 1e10 || Math.abs(v) < 1e-9)) { const [m, e] = v.toExponential(9).split("e"); return { mant: String(+m), exp: Number(e) }; }
