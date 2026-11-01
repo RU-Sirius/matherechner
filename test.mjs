@@ -83,3 +83,6 @@ console.log("∫/ddx/Σ ok.");
 assert.equal(M.autoClose("cos(20"), "cos(20)"); assert.equal(M.autoClose("sqrt(2*(3+1"), "sqrt(2*(3+1))");
 assert.equal(M.evaluate("cos(60", { deg: true }).decimal, "0.5"); assert.equal(M.evaluate("2*(3+4").decimal, "14");
 console.log("Klammerergänzung ok.");
+r = M.quadraticExact(1, -5, 6); assert.deepEqual(r.text, ["2", "3"]); r = M.quadraticExact(2, 1, -1); assert.deepEqual(r.text, ["-1", "1/2"]);
+r = M.quadraticExact(1, -2, 5); assert.deepEqual(r.text, ["1 − 2i", "1 + 2i"]);
+console.log("Quadratisch exakt zusammengefasst ok.");

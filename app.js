@@ -1,7 +1,8 @@
-import { LEGAL, h, section, resultRow, navRow, clearCurrentState, setPreset } from "./ui.js";
+import { LEGAL, h, section, resultRow, navRow, segmented, clearCurrentState, setPreset } from "./ui.js";
 import * as V from "./views.js";
 import * as V2 from "./views2.js";
 import { graphView } from "./graph.js";
+import { schoolCalc } from "./fx.js";
 import { favorites, saveBar, projectsView, reportView, saves } from "./projects.js";
 import { installView } from "./install.js";
 import { svgIcon } from "./icons.js";
@@ -25,7 +26,7 @@ const TOOLS = {
   deriv: ["Ableitung (symbolisch & Wert)", "Ableitung", R, V.derivativeView],
   integral: ["Bestimmtes Integral", "Integral", R, V.integralView],
   curve: ["Kurvendiskussion", "Kurvendiskussion", R, V.curveView],
-  sum: ["Summe Σ und Produkt Π", "Summe/Produkt", R, V.sumView],
+  sum: ["Summe Σ und Produkt Π", "Σ und Π", R, V.sumView],
   table: ["Wertetabelle", "Wertetabelle", R, V.tableView],
   matrix: ["Matrizen (det, Inverse, Rang, Eigenwerte)", "Matrizen", P, V2.matrix],
   vectors: ["Vektoren (2D/3D)", "Vektoren", P, V2.vectors],
@@ -40,7 +41,8 @@ const TOOLS = {
   constants: ["Physikalische Konstanten", "Konstanten", N, V2.constants],
 };
 // Modi für die MENU-Taste der Schulrechner-Ansicht
-const MENU_ITEMS = () => Object.entries(TOOLS).filter(([k]) => k !== "calc").map(([k, t]) => [k, t[0]]);
+// Für die MENU-Taste: [Schlüssel, Bezeichnung, Ansicht] – die Funktionen laufen im Rechner-Display
+const MENU_ITEMS = () => Object.entries(TOOLS).filter(([k]) => k !== "calc").map(([k, t]) => [k, t[0], t[3], t[1]]);
 const nav = (key) => navRow(key, TOOLS[key][0], TOOLS[key][2], svgIcon(key));
 const GROUPS = [
   ["Rechnen", ["calc", "numtheory", "bases", "complex"]],
@@ -52,7 +54,17 @@ const GROUPS = [
   ["Nachschlagen", ["units", "constants"]],
 ];
 
+// Umschalter auf der Startseite: Liste oder komplette Rechner-Ansicht (wird gespeichert)
+const HOME_KEY = "mx:homeMode";
+function homeSwitch(mode) {
+  return h("div", { class: "home-switch" }, segmented([["list", "Liste"], ["calc", "Rechner"]], mode, (m) => { localStorage.setItem(HOME_KEY, m); route(); }));
+}
 function home() {
+  const mode = localStorage.getItem(HOME_KEY) || "list";
+  if (mode === "calc") return [homeSwitch(mode), schoolCalc(MENU_ITEMS())];
+  return [homeSwitch(mode), ...homeList()];
+}
+function homeList() {
   const favs = favorites.list().filter((k) => k in TOOLS);
   const nSaved = saves.list().length;
   return [
@@ -69,7 +81,7 @@ function settingsView() {
     ...section("Haftungshinweis", [h("div", { class: "row" }, h("span", { class: "hint" }, LEGAL))]),
     ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
       "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
-    ...section("", [resultRow("Version", "1.1.1 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
+    ...section("", [resultRow("Version", "1.2.0 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
   ];
 }
 

@@ -2,6 +2,7 @@
 // Eigenständige Gestaltung im Stil klassischer wissenschaftlicher Schulrechner.
 import * as M from "./mx.js";
 import { h } from "./ui.js";
+import { svgIcon } from "./icons.js";
 
 const math = M.math;
 const CUR = "__c__", BOX = "__p__";
@@ -104,6 +105,7 @@ function dms(v) {
 }
 
 // ================= Ansicht =================
+// menuItems: [[schlüssel, bezeichnung, ansicht()], …] – werden über MENU im Display geöffnet.
 export function schoolCalc(menuItems = []) {
   const cfg = Object.assign({ deg: true, exact: true, fmt: "norm", digits: 4 }, JSON.parse(localStorage.getItem(SKEY) || "{}"));
   const vars = Object.assign({ A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0 }, JSON.parse(localStorage.getItem(VKEY) || "{}"));
@@ -132,6 +134,7 @@ export function schoolCalc(menuItems = []) {
   // ---------- Eingabe-Hilfen ----------
   const ident = /[A-Za-z_]/;
   function insert(t) {
+    if (mode !== "comp") return fieldOp("insert", t);
     if (done) { // nach einem Ergebnis: Operator setzt mit Ans fort, sonst neue Eingabe
       // Rechenzeichen setzen mit Ans fort; das Vorzeichen (−) und alles andere beginnt neu
       if (/^[+−×÷*/^!]/.test(t)) { text = "Ans"; cur = 3; } else { text = ""; cur = 0; }
@@ -145,6 +148,7 @@ export function schoolCalc(menuItems = []) {
   }
   // Cursor springt wie beim Schulrechner zwischen Feldern: Zähler ↔ Nenner, Argumente von ∫/Σ/log, Exponent.
   function left() {
+    if (mode !== "comp") return fieldOp("left");
     if (done) { done = false; cur = text.length; return paint(); }
     if (cur === 0) return paint();
     if (text.slice(cur - 3, cur) === ")/(") cur -= 3;
@@ -153,6 +157,7 @@ export function schoolCalc(menuItems = []) {
     paint();
   }
   function right() {
+    if (mode !== "comp") return fieldOp("right");
     if (done) { done = false; cur = 0; return paint(); }
     if (cur >= text.length) return paint();
     if (text.startsWith(")/(", cur)) cur += 3;
@@ -161,6 +166,7 @@ export function schoolCalc(menuItems = []) {
     paint();
   }
   function del() {
+    if (mode !== "comp") return fieldOp("del");
     if (done) { done = false; cur = text.length; }
     if (cur === 0) return paint();
     let s = cur - 1;
@@ -168,8 +174,9 @@ export function schoolCalc(menuItems = []) {
     else if (ident.test(text[s])) while (s > 0 && ident.test(text[s - 1])) s--;
     text = text.slice(0, s) + text.slice(cur); cur = s; paint();
   }
-  function ac() { text = ""; cur = 0; res = null; done = false; engOn = false; showDms = false; hIdx = null; paint(); }
+  function ac() { if (mode !== "comp") return fieldOp("ac"); text = ""; cur = 0; res = null; done = false; engOn = false; showDms = false; hIdx = null; paint(); }
   function exe() {
+    if (mode !== "comp") return fieldOp("next");
     if (!text.trim()) return;
     text = M.autoClose(text); // auch in der Anzeige ergänzen
     try {
@@ -180,6 +187,7 @@ export function schoolCalc(menuItems = []) {
     done = true; hIdx = null; paint();
   }
   function histMove(d) {
+    if (mode !== "comp") return fieldOp(d < 0 ? "prev" : "next");
     if (!hist.length) return;
     hIdx = hIdx === null ? (d < 0 ? hist.length - 1 : null) : hIdx + d;
     if (hIdx === null || hIdx < 0 || hIdx >= hist.length) { hIdx = hIdx < 0 ? 0 : null; if (hIdx === null) return; }
@@ -187,6 +195,7 @@ export function schoolCalc(menuItems = []) {
   }
   // Variable antippen: je nach Zustand speichern, abrufen oder einfügen
   function variable(name) {
+    if (mode !== "comp") { alpha = false; return fieldOp("insert", name); }
     if (sto) { exeIfNeeded(); vars[name] = vars.Ans ?? 0; sto = false; alpha = false; save(); res = { value: vars[name], decimal: M.num(Number(vars[name])), exact: null }; text = `Ans→${name}`; done = true; return paint(); }
     if (rcl) { rcl = false; alpha = false; try { res = M.evaluate(name, { scope: vars }); } catch { res = { error: "Variablenfehler" }; } text = name; done = true; return paint(); }
     alpha = false; insert(name);
@@ -194,6 +203,48 @@ export function schoolCalc(menuItems = []) {
 
   // ---------- Tasten ----------
   // [Hauptbeschriftung, Hauptaktion, SHIFT-Beschriftung, SHIFT-Aktion, ALPHA-Variable, Klasse]
+  // ---------- Modi im Display: MENU-Übersicht und Funktionen, bedient über das Tastenfeld ----------
+  let mode = "comp", activeInput = null;
+  const scrHead = h("div", { class: "scr-head" }), scrBody = h("div", { class: "scr-body" });
+  const screen = h("div", { class: "lcd lcd-screen", hidden: "" }, scrHead, scrBody);
+  const fields = () => [...scrBody.querySelectorAll('input[type="text"]')];
+  // Systemtastatur unterdrücken – eingegeben wird über das Rechner-Tastenfeld
+  const prep = () => fields().forEach((i) => { if (i.getAttribute("inputmode") !== "none") i.setAttribute("inputmode", "none"); });
+  new MutationObserver(prep).observe(scrBody, { childList: true, subtree: true });
+  scrBody.addEventListener("focusin", (e) => { if (e.target.matches('input[type="text"]')) { activeInput = e.target; mark(); } });
+  const mark = () => fields().forEach((i) => i.classList.toggle("fx-active", i === activeInput));
+  function focusField(inp) { if (!inp) return; activeInput = inp; inp.focus({ preventScroll: true }); inp.scrollIntoView({ block: "nearest" }); mark(); }
+  function fieldOp(op, t) {
+    if (mode === "menu") return;
+    if (!activeInput || !scrBody.contains(activeInput)) { const f = fields(); activeInput = (op === "prev" ? f[f.length - 1] : f[0]) ?? null; if (!activeInput) return; if (op === "prev" || op === "next") return focusField(activeInput); }
+    const inp = activeInput, v = inp.value, s0 = inp.selectionStart ?? v.length, e0 = inp.selectionEnd ?? s0;
+    const setV = (nv, pos) => { inp.value = nv; inp.setSelectionRange(pos, pos); inp.dispatchEvent(new Event("input", { bubbles: true })); };
+    if (op === "insert") { const slot = t.search(/\(\)|\(,|,,|,\)/); setV(v.slice(0, s0) + t + v.slice(e0), s0 + (slot >= 0 ? slot + 1 : t.length)); }
+    else if (op === "del") { if (s0 !== e0) setV(v.slice(0, s0) + v.slice(e0), s0); else if (s0 > 0) { let s1 = s0 - 1; if (v[s1] === "(") while (s1 > 0 && ident.test(v[s1 - 1])) s1--; setV(v.slice(0, s1) + v.slice(s0), s1); } }
+    else if (op === "ac") setV("", 0);
+    else if (op === "left") { const q = v.slice(s0 - 3, s0) === ")/(" ? s0 - 3 : v[s0 - 1] === "," ? s0 - 1 : Math.max(0, s0 - 1); inp.setSelectionRange(q, q); }
+    else if (op === "right") { const q = v.startsWith(")/(", s0) ? s0 + 3 : v[s0] === "," ? s0 + 1 : Math.min(v.length, s0 + 1); inp.setSelectionRange(q, q); }
+    else if (op === "next" || op === "prev") { const f = fields(), k = f.indexOf(inp) + (op === "next" ? 1 : -1); if (f[k]) focusField(f[k]); return; } // am Ende bleibt das letzte Feld aktiv
+    focusField(inp);
+  }
+  function showComp() { mode = "comp"; screen.hidden = true; lcd.hidden = false; activeInput = null; paint(); }
+  function showMenu() {
+    mode = "menu"; lcd.hidden = true; screen.hidden = false; activeInput = null;
+    scrHead.replaceChildren(span("scr-title", "MENU – Modus wählen"));
+    const tile = (key, label, fn) => h("button", { class: "scr-tile", onclick: fn }, h("span", { class: "scr-ico" }, svgIcon(key)), span("scr-lbl", label));
+    scrBody.replaceChildren(h("div", { class: "scr-grid" }, tile("calc", "Berechnen", showComp),
+      ...menuItems.map(([key, label, view, short]) => tile(key, short ?? label.replace(/\s*\(.*\)$/, ""), () => showTool(key, label, view)))));
+    scrBody.scrollTop = 0;
+  }
+  function showTool(key, label, view) {
+    mode = key; lcd.hidden = true; screen.hidden = false; activeInput = null;
+    scrHead.replaceChildren(h("button", { class: "scr-back", onclick: showMenu }, "◀ MENU"), span("scr-title", label));
+    let nodes; try { nodes = view(); } catch (e) { nodes = [span("lcd-err", "Fehler beim Öffnen")]; }
+    scrBody.replaceChildren(...(Array.isArray(nodes) ? nodes : [nodes]));
+    scrBody.scrollTop = 0; prep();
+    setTimeout(() => focusField(fields()[0]), 0);
+  }
+  const COMP_ONLY = new Set(["S⇔D", "ENG", "RCL", "M+", "°′″"]);
   const I = (t) => () => insert(t);
   const toggleShift = () => { shift = !shift; alpha = false; paint(); };
   const toggleAlpha = () => { alpha = !alpha; shift = false; paint(); };
@@ -226,7 +277,7 @@ export function schoolCalc(menuItems = []) {
         h("button", { class: "fx-menu-item fx-menu-close", onclick: close }, "Schließen")));
     document.body.append(ov);
   }
-  const openMenu = () => overlay("Modus wählen", [["Berechnungen (diese Ansicht)", () => {}], ...menuItems.map(([key, label]) => [label, () => { location.hash = key; }])]);
+  const openMenu = () => showMenu();
   const openHyp = () => overlay("Hyperbelfunktionen", [["sinh", I("sinh(")], ["cosh", I("cosh(")], ["tanh", I("tanh(")], ["sinh⁻¹", I("asinh(")], ["cosh⁻¹", I("acosh(")], ["tanh⁻¹", I("atanh(")]]);
   const set = (c) => () => { Object.assign(cfg, c); showExact = cfg.exact; save(); paint(); };
   const openSetup = () => overlay("SETUP", [
@@ -247,7 +298,7 @@ export function schoolCalc(menuItems = []) {
   const press = (fn, sfn) => (e) => { e.preventDefault(); if (shift && sfn) { shift = false; sfn(); } else { const wasShift = shift; shift = false; fn(); if (wasShift) paint(); } };
   const fnKeys = KEYS.map(([lab, fn, slab, sfn, avar, cls = ""]) => h("div", { class: `fxk ${cls}` },
     h("div", { class: "fxk-lbl" }, slab ? span("lbl-s", slab) : span("lbl-s", ""), avar ? span("lbl-a", avar) : null),
-    h("button", { class: "fxb", onclick: (e) => { e.preventDefault(); if (alpha && avar) return variable(avar); press(fn, sfn)(e); } }, lab)));
+    h("button", { class: "fxb", onclick: (e) => { e.preventDefault(); if (alpha && avar) return variable(avar); if (mode !== "comp" && COMP_ONLY.has(lab) && !shift) return; press(fn, sfn)(e); } }, lab)));
   const numKeys = NUM.map(([lab, fn, cls = "", slab, sfn]) => h("div", { class: `fxk ${cls}` },
     h("div", { class: "fxk-lbl" }, span("lbl-s", slab ?? "")), h("button", { class: "fxb fxb-num", onclick: press(fn, sfn) }, lab)));
 
@@ -255,6 +306,7 @@ export function schoolCalc(menuItems = []) {
   const onKey = (e) => {
     if (!document.body.contains(lcd)) return document.removeEventListener("keydown", onKey);
     if (e.metaKey || e.ctrlKey) return;
+    if (mode !== "comp") { if (e.key === "Enter") { e.preventDefault(); fieldOp("next"); } return; } // in Feldern tippt die Tastatur direkt
     const k = e.key;
     if (k === "Enter" || k === "=") { e.preventDefault(); exe(); } else if (k === "Backspace") { e.preventDefault(); del(); } else if (k === "Escape") ac();
     else if (k === "ArrowLeft") left(); else if (k === "ArrowRight") right(); else if (k === "ArrowUp") histMove(-1); else if (k === "ArrowDown") histMove(1);
@@ -264,7 +316,7 @@ export function schoolCalc(menuItems = []) {
   setTimeout(paint, 0);
   return h("div", { class: "fx" },
     h("div", { class: "fx-top" }, span("fx-brand", "MatheRechner"), span("fx-model", "Schulrechner-Ansicht")),
-    lcd,
+    lcd, screen,
     h("div", { class: "fx-fn" }, ...fnKeys),
     h("div", { class: "fx-num" }, ...numKeys));
 }

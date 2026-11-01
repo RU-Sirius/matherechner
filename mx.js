@@ -5,11 +5,18 @@ export { math };
 const fail = (m = "range") => { throw new Error(m); };
 
 // ---------- Zahlen ein-/ausgeben (für Formularfelder) ----------
+// Zahl aus einem Eingabefeld. Akzeptiert auch Rechenausdrücke wie 1/3, √2, 2π, 3·10^4 (wie ein Taschenrechner).
 export function parse(text) {
-  const s = String(text ?? "").trim().replace(",", ".");
+  let s = String(text ?? "").trim();
   if (s === "") return null;
-  const v = Number(s);
-  return Number.isFinite(v) ? v : null;
+  const simple = s.replace(",", ".");
+  if (/^[-+−]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(simple)) return Number(simple.replace("−", "-"));
+  if (!s.includes("(")) s = s.replace(/(\d),(\d)/g, "$1.$2"); // Dezimalkomma, solange keine Funktionsargumente vorkommen
+  try {
+    const v = evaluate(s).value;
+    const n = typeof v === "number" ? v : math.isComplex(v) && v.im === 0 ? v.re : NaN;
+    return Number.isFinite(n) ? n : null;
+  } catch { return null; }
 }
 export const fmt = (v, d = 10) => (Number.isFinite(v) ? v.toLocaleString("de-DE", { maximumFractionDigits: d }) : String(v));
 // Kompakte Zahl für Ergebnisse (max. 12 signifikante Stellen, Punkt als Dezimaltrenner wie in der Eingabe).
@@ -288,6 +295,8 @@ export function quadraticExact(a, b, c) {
   const mStr = math.number(m) === 0 ? "" : fracStr(m);
   if (rv === 0) return { kind: "double", text: [fracStr(m)] };
   const surd = rationalApprox(Math.sqrt(Math.abs(rv)));
+  // Rationale Wurzel und reelle Lösungen: direkt zusammenfassen (5/2 ± 1/2 → 2 ; 3)
+  if (surd && rv > 0) return { kind: "real", text: [fracStr(math.subtract(m, surd)), fracStr(math.add(m, surd))], discriminant: math.number(math.subtract(math.multiply(B, B), math.multiply(4, math.multiply(A, Cc)))) };
   const root = surd ? fracStr(surd) : exactForm(Math.sqrt(Math.abs(rv)));
   if (!root) return null;
   const im = rv < 0 ? "i" : "";
