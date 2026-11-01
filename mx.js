@@ -59,8 +59,22 @@ function engine(deg, exact) {
       return (8 * (f(x + hh) - f(x - hh)) - (f(x + 2 * hh) - f(x - 2 * hh))) / (12 * hh);
     };
     const sigma = (args, _m, scope) => sumProduct(fnOf(args[0], scope), asNum(args[1].compile().evaluate(plain(scope))), asNum(args[2].compile().evaluate(plain(scope))));
-    integral.rawArgs = true; ddx.rawArgs = true; sigma.rawArgs = true;
-    e.import({ integral, ddx, sigma }, { override: true });
+    const product = (args, _m, scope) => sumProduct(fnOf(args[0], scope), asNum(args[1].compile().evaluate(plain(scope))), asNum(args[2].compile().evaluate(plain(scope))), true);
+    integral.rawArgs = true; ddx.rawArgs = true; sigma.rawArgs = true; product.rawArgs = true;
+    e.import({ integral, ddx, sigma, product }, { override: true });
+    // Schulrechner-Funktionen: Pol/Rec (winkelgerecht), Int/Intg, Rnd, RanInt, ÷R, gemischte Brüche, GCD/LCM
+    const n = (v) => asNum(v);
+    e.import({
+      Pol: (x, y) => [Math.hypot(n(x), n(y)), n(e.atan2(n(y), n(x)))],
+      Rec: (r, t) => [n(r) * n(e.cos(n(t))), n(r) * n(e.sin(n(t)))],
+      Int: (x) => Math.trunc(n(x)), Intg: (x) => Math.floor(n(x)),
+      Rnd: (x, d = 10) => +n(x).toPrecision(Math.max(1, Math.min(15, n(d)))),
+      RndFix: (x, d) => Math.round(n(x) * 10 ** n(d)) / 10 ** n(d),
+      RanInt: (a, b) => Math.floor(Math.random() * (Math.floor(n(b)) - Math.ceil(n(a)) + 1)) + Math.ceil(n(a)),
+      divR: (a, b) => { const A = n(a), B = n(b); if (!Number.isInteger(A) || !Number.isInteger(B) || B === 0) throw new Error("Math ERROR"); const q = Math.trunc(A / B); return [q, A - q * B]; },
+      mixed: (w, num, den) => (n(w) < 0 ? e.subtract(w, e.divide(num, den)) : e.add(w, e.divide(num, den))),
+      GCD: (a, b) => e.gcd(a, b), LCM: (a, b) => e.lcm(a, b),
+    }, { override: true });
     engines[key] = e;
   }
   return engines[key];

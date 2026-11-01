@@ -56,6 +56,10 @@ function render(node) {
     if (name === "ddx") return span("nm", frac("d", "dx"), paren(r(0)), span("nbar", sub(span("nm", "x=", a[1] ? r(1) : ""))));
     if (name === "sigma") return span("nint", span("nsig", span("nih", a[2] ? r(2) : ""), span("nsigs", "Σ"), span("nil2", span("nm", "x=", a[1] ? r(1) : ""))), paren(r(0)));
     if (name === "nCr" || name === "nPr") return span("nm", r(0), span("ncr", name[1]), r(1));
+    if (name === "mixed") return span("nm", r(0), frac(r(1), r(2)));
+    if (name === "divR") return span("nm", r(0), span("nop", "÷R"), r(1));
+    if (name === "product") return span("nint", span("nsig", span("nih", a[2] ? r(2) : ""), span("nsigs", "Π"), span("nil2", span("nm", "x=", a[1] ? r(1) : ""))), paren(r(0)));
+    if (name === "random") return span("nc", "Ran#");
     return span("nm", span("nfn", FN[name] ?? name), paren(span("nm", ...a.flatMap((x, i) => (i ? [", ", render(strip(x))] : [render(strip(x))])))));
   }
   if (n.isAssignmentNode) return span("nm", render(n.value), span("nop", "→"), n.object?.name ?? "");
@@ -112,7 +116,7 @@ export function schoolCalc(menuItems = []) {
   let hist = JSON.parse(localStorage.getItem(HKEY) || "[]");
   const save = () => { localStorage.setItem(SKEY, JSON.stringify(cfg)); localStorage.setItem(VKEY, JSON.stringify(vars)); localStorage.setItem(HKEY, JSON.stringify(hist.slice(-40))); };
 
-  let text = "", cur = 0, shift = false, alpha = false, sto = false, rcl = false, res = null, showExact = cfg.exact, engOn = false, engShift = 0, showDms = false, hIdx = null, done = false;
+  let text = "", cur = 0, shift = false, alpha = false, sto = false, rcl = false, res = null, showExact = cfg.exact, engOn = false, engShift = 0, showDms = false, showMixed = false, hIdx = null, done = false;
 
   const status = h("div", { class: "lcd-status" }), inLine = h("div", { class: "lcd-in" }), outLine = h("div", { class: "lcd-out" });
   const lcd = h("div", { class: "lcd" }, status, inLine, outLine);
@@ -124,7 +128,14 @@ export function schoolCalc(menuItems = []) {
     if (!res) { outLine.replaceChildren(); return; }
     if (res.error) { outLine.replaceChildren(span("lcd-err", res.error)); return; }
     let node;
-    if (showDms && typeof res.value === "number") node = span("nc", dms(res.value));
+    const arr = res.value?.toArray ? res.value.toArray() : Array.isArray(res.value) ? res.value : null;
+    if (res.special) node = span("nc fx-special", res.special);
+    else if (arr && arr.length === 2 && /^\s*(Pol|Rec|divR)\(/.test(text)) {
+      const [p, q] = arr.map(Number), f = (v) => M.num(v, 10), kind = text.trim().slice(0, 3);
+      node = span("nc fx-special", kind === "Pol" ? `r = ${f(p)},  θ = ${f(q)}` : kind === "Rec" ? `x = ${f(p)},  y = ${f(q)}` : `Q = ${f(p)},  R = ${f(q)}`);
+    }
+    else if (showMixed && res.mixed) node = exactNode(res.mixed);
+    else if (showDms && typeof res.value === "number") node = span("nc", dms(res.value));
     else if (engOn && typeof res.value === "number") node = numNode(formatNumber(res.value, cfg, engShift, true));
     else if (showExact && res.exact && cfg.fmt === "norm") node = exactNode(res.exact);
     else node = typeof res.value === "number" ? numNode(formatNumber(res.value, cfg)) : span("nc", res.decimal);
@@ -140,6 +151,10 @@ export function schoolCalc(menuItems = []) {
       if (/^[+−×÷*/^!]/.test(t)) { text = "Ans"; cur = 3; } else { text = ""; cur = 0; }
       done = false; res = null; engOn = false; showDms = false;
     }
+    // Variable/Funktion direkt nach einem Buchstaben: Leerzeichen = implizites Mal (A x statt Name „Ax“)
+    if (/^[A-Za-zπ]/.test(t) && /[A-Za-z]/.test(text[cur - 1] ?? "")) t = " " + t;
+    // Komma bzw. „)“ einer Vorlage nicht doppeln: steht es schon an der Schreibmarke, nur darüber springen
+    if ((t === "," || t === ")") && text[cur] === t) { cur++; hIdx = null; return paint(); }
     text = text.slice(0, cur) + t + text.slice(cur);
     // Schreibmarke ins erste leere Feld einer Vorlage, sonst ans Ende des Eingefügten
     const slot = t.search(/\(\)|\(,|,,|,\)/);
@@ -181,7 +196,9 @@ export function schoolCalc(menuItems = []) {
     text = M.autoClose(text); // auch in der Anzeige ergänzen
     try {
       const r = M.evaluate(text, { deg: cfg.deg, scope: vars }); // Zuweisungen (A = 5) landen direkt in vars
-      res = r; showExact = cfg.exact; engOn = false; engShift = 0; showDms = false;
+      res = r; showExact = cfg.exact; engOn = false; engShift = 0; showDms = false; showMixed = false;
+      const arr = r.value?.toArray ? r.value.toArray() : Array.isArray(r.value) ? r.value : null;
+      if (arr && arr.length === 2 && /^\s*(Pol|Rec)\(/.test(text)) { vars.X = Number(arr[0]); vars.Y = Number(arr[1]); vars.Ans = vars.X; save(); }
       hist.push(text); save();
     } catch (e) { res = { error: /Undefined symbol/.test(e.message) ? "Variablenfehler" : /Unexpected|Parenthesis|Value expected|end of expression/.test(e.message) ? "Syntax ERROR" : "Math ERROR" }; }
     done = true; hIdx = null; paint();
@@ -219,6 +236,8 @@ export function schoolCalc(menuItems = []) {
     if (!activeInput || !scrBody.contains(activeInput)) { const f = fields(); activeInput = (op === "prev" ? f[f.length - 1] : f[0]) ?? null; if (!activeInput) return; if (op === "prev" || op === "next") return focusField(activeInput); }
     const inp = activeInput, v = inp.value, s0 = inp.selectionStart ?? v.length, e0 = inp.selectionEnd ?? s0;
     const setV = (nv, pos) => { inp.value = nv; inp.setSelectionRange(pos, pos); inp.dispatchEvent(new Event("input", { bubbles: true })); };
+    if (op === "insert" && (t === "," || t === ")") && v[s0] === t && s0 === e0) { inp.setSelectionRange(s0 + 1, s0 + 1); return focusField(inp); }
+    if (op === "insert" && /^[A-Za-zπ]/.test(t) && /[A-Za-z]/.test(v[s0 - 1] ?? "")) t = " " + t;
     if (op === "insert") { const slot = t.search(/\(\)|\(,|,,|,\)/); setV(v.slice(0, s0) + t + v.slice(e0), s0 + (slot >= 0 ? slot + 1 : t.length)); }
     else if (op === "del") { if (s0 !== e0) setV(v.slice(0, s0) + v.slice(e0), s0); else if (s0 > 0) { let s1 = s0 - 1; if (v[s1] === "(") while (s1 > 0 && ident.test(v[s1 - 1])) s1--; setV(v.slice(0, s1) + v.slice(s0), s1); } }
     else if (op === "ac") setV("", 0);
@@ -231,11 +250,13 @@ export function schoolCalc(menuItems = []) {
   function showMenu() {
     mode = "menu"; lcd.hidden = true; screen.hidden = false; activeInput = null;
     scrHead.replaceChildren(span("scr-title", "MENU – Modus wählen"));
-    const tile = (key, label, fn) => h("button", { class: "scr-tile", onclick: fn }, h("span", { class: "scr-ico" }, svgIcon(key)), span("scr-lbl", label));
+    let nr = 0;
+    const tile = (key, label, fn) => { nr++; return h("button", { class: "scr-tile", onclick: fn, "data-nr": nr }, h("span", { class: "scr-ico" }, svgIcon(key)), span("scr-lbl", label), nr <= 9 ? span("scr-nr", String(nr)) : null); };
     scrBody.replaceChildren(h("div", { class: "scr-grid" }, tile("calc", "Berechnen", showComp),
       ...menuItems.map(([key, label, view, short]) => tile(key, short ?? label.replace(/\s*\(.*\)$/, ""), () => showTool(key, label, view)))));
     scrBody.scrollTop = 0;
   }
+  function pickTile(k) { const t = scrBody.querySelector(`.scr-tile[data-nr="${k}"]`); if (t) t.click(); }
   function showTool(key, label, view) {
     mode = key; lcd.hidden = true; screen.hidden = false; activeInput = null;
     scrHead.replaceChildren(h("button", { class: "scr-back", onclick: showMenu }, "◀ MENU"), span("scr-title", label));
@@ -244,32 +265,81 @@ export function schoolCalc(menuItems = []) {
     scrBody.scrollTop = 0; prep();
     setTimeout(() => focusField(fields()[0]), 0);
   }
-  const COMP_ONLY = new Set(["S⇔D", "ENG", "RCL", "M+", "°′″"]);
+  const COMP_ONLY = new Set(["S⇔D", "ENG", "STO", "M+", "°′″", "CALC"]);
   const I = (t) => () => insert(t);
   const toggleShift = () => { shift = !shift; alpha = false; paint(); };
   const toggleAlpha = () => { alpha = !alpha; shift = false; paint(); };
+  const hasNum = () => done && res && !res.error && typeof res.value === "number";
+  const toggle = (fn) => () => { if (hasNum() || (done && res && !res.error)) { fn(); paint(); } };
+
+  // ---------- Zusatzfunktionen der Tasten ----------
+  function fact() { // Primfaktorzerlegung des Ergebnisses
+    if (!hasNum() || !Number.isSafeInteger(res.value) || res.value < 2) { res = { error: "Math ERROR" }; return paint(); }
+    res = { ...res, special: M.factorize(res.value).map(([q, e]) => (e > 1 ? `${q}^${e}` : String(q))).join(" × ") }; paint();
+  }
+  function approx() { if (mode !== "comp") return fieldOp("next"); exe(); if (res && !res.error) { showExact = false; paint(); } }
+  // CALC: Werte für die im Ausdruck vorkommenden Variablen abfragen, dann berechnen
+  function calcPrompt(solve = false) {
+    if (!text.trim()) return;
+    const names = [...new Set((M.normalize(text).match(/\b[A-FXYMx]\b/g) || []))].filter((v) => !(solve && v === "x"));
+    const inputs = names.map((v) => h("input", { type: "text", value: String(vars[v] ?? 0), "data-var": v, class: "calc-var" }));
+    const run = () => {
+      inputs.forEach((i) => { const val = M.parse(i.value); if (val !== null) vars[i.dataset.var] = val; }); save();
+      ov.remove(); solve ? doSolve() : (done = false, exe());
+    };
+    const ov = h("div", { class: "modal" }, h("div", { class: "modal-box fx-menu" }, h("h2", {}, solve ? "SOLVE – Werte der übrigen Variablen" : "CALC – Werte eingeben"),
+      ...(names.length ? names.map((v, k) => h("label", { class: "fx-var-row" }, h("span", {}, `${v} =`), inputs[k])) : [h("p", {}, "Keine Variablen im Ausdruck.")]),
+      h("button", { class: "modal-btn", onclick: run }, solve ? "Lösen" : "Berechnen"), h("button", { class: "fx-menu-item fx-menu-close", onclick: () => ov.remove() }, "Abbrechen")));
+    document.body.append(ov);
+    if (!names.length) { ov.remove(); solve ? doSolve() : exe(); }
+  }
+  // SOLVE: Gleichung (oder Ausdruck = 0) numerisch nach x auflösen; nächstgelegene Lösung zum aktuellen x
+  function doSolve() {
+    text = M.autoClose(text);
+    const eq = M.normalize(text).replace(/\bAns\b/g, `(${Number(vars.Ans ?? 0)})`);
+    const sc = Object.fromEntries(Object.entries(vars).filter(([k]) => k !== "x"));
+    let xs = [];
+    try { xs = M.solveEquation(eq, -1000, 1000, { deg: cfg.deg, scope: sc }); if (!xs.length) xs = M.solveEquation(eq, -1e6, 1e6, { deg: cfg.deg, scope: sc }); }
+    catch { res = { error: "Syntax ERROR" }; done = true; return paint(); }
+    if (!xs.length) { res = { error: "Keine Lösung gefunden" }; done = true; return paint(); }
+    const x0 = Number(vars.x ?? 0), x = xs.reduce((p, q) => (Math.abs(q - x0) < Math.abs(p - x0) ? q : p));
+    vars.x = x; vars.Ans = x; save();
+    res = { value: x, decimal: M.num(x), exact: M.evaluate(String(x)).exact, special: `x = ${M.num(x)}${xs.length > 1 ? `   (${xs.length} Lösungen in [−1000; 1000], Startwert x = ${M.num(x0)})` : ""}` };
+    done = true; paint();
+  }
+  const openOptn = () => overlay("OPTN", [["sinh", I("sinh(")], ["cosh", I("cosh(")], ["tanh", I("tanh(")], ["sinh⁻¹", I("asinh(")], ["cosh⁻¹", I("acosh(")], ["tanh⁻¹", I("atanh(")],
+    ["Rnd – auf Anzeigegenauigkeit runden", () => insert(cfg.fmt === "fix" ? `RndFix(,${cfg.digits})` : "Rnd(")], ["Int – ganzzahliger Teil", I("Int(")], ["Intg – größte ganze Zahl ≤ x", I("Intg(")],
+    ["Abs – Betrag", I("abs(")], ["Re – Realteil", I("re(")], ["Im – Imaginärteil", I("im(")], ["arg – Argument", I("arg(")], ["Konjugiert", I("conj(")], ["Π – Produkt", I("product(,,)")]]);
+  const openConst = () => overlay("CONST – Konstanten", M.CONSTANTS.map(([key, label]) => [label, I(key)]));
+  const openConv = () => overlay("CONV – Einheit umrechnen (Wert vorher eingeben)", Object.entries(M.UNIT_GROUPS).flatMap(([g, us]) =>
+    us.flatMap((u) => us.filter((v) => v !== u).map((v) => [`${g}: ${u} → ${v}`, I(` ${u} to ${v}`)]))).slice(0, 400));
+  const openReset = () => overlay("RESET", [["Einstellungen zurücksetzen", () => { Object.assign(cfg, { deg: true, exact: true, fmt: "norm", digits: 4 }); showExact = true; save(); paint(); }],
+    ["Variablen und Speicher löschen", () => { for (const k of "ABCDEFXYM") vars[k] = 0; save(); paint(); }], ["Alles zurücksetzen", () => { localStorage.removeItem(SKEY); localStorage.removeItem(VKEY); localStorage.removeItem(HKEY); location.reload(); }]]);
+
+  // [Haupt, Aktion, SHIFT-Beschriftung, SHIFT-Aktion, ALPHA (Variable "A" oder [Beschriftung, Aktion]), Klasse]
   const KEYS = [
     ["SHIFT", toggleShift, "", null, null, "k-shift"], ["ALPHA", toggleAlpha, "", null, null, "k-alpha"],
     ["◀", left, "", null, null, "k-nav"], ["▶", right, "", null, null, "k-nav"], ["▲", () => histMove(-1), "", null, null, "k-nav"], ["▼", () => histMove(1), "", null, null, "k-nav"],
 
-    ["∫▢", I("integral(,,)"), "Σ", I("sigma(,,)"), null], ["d/dx", I("ddx(,)"), "", null, null], ["x⁻¹", I("^(-1)"), "x!", I("!"), null],
-    ["log▢", I("log(,)"), "", null, null], ["▢/▢", I("()/()"), "", null, null], ["MENU", () => openMenu(), "SETUP", () => openSetup(), null, "k-sys"],
+    ["OPTN", () => openOptn(), "", null, null, "k-sys"], ["CALC", () => calcPrompt(false), "SOLVE", () => calcPrompt(true), ["=", I("=")]],
+    ["∫▢", I("integral(,,)"), "d/dx", I("ddx(,)"), null], ["x", I("x"), "Σ", I("sigma(,,)"), ["Π", I("product(,,)")]],
+    ["MENU", () => openMenu(), "", null, null, "k-sys"], ["SETUP", () => openSetup(), "", null, null, "k-sys"],
 
-    ["√▢", I("sqrt()"), "³√▢", I("nthRoot(,3)"), null], ["x²", I("^2"), "x³", I("^3"), null], ["x^▢", I("^()"), "ⁿ√▢", I("nthRoot(,)"), null],
-    ["log", I("log10("), "10^▢", I("10^()"), null], ["ln", I("ln("), "e^▢", I("e^()"), null], ["(−)", I("-"), "|x|", I("abs("), "A"],
+    ["▢/▢", I("()/()"), "▢▢/▢", I("mixed(,,)"), ["÷R", I("divR(,)")]], ["√▢", I("sqrt()"), "³√▢", I("nthRoot(,3)"), null], ["x²", I("^2"), "x³", I("^3"), null],
+    ["x^▢", I("^()"), "ⁿ√▢", I("nthRoot(,)"), null], ["log▢", I("log(,)"), "10^▢", I("10^()"), null], ["ln", I("ln("), "e^▢", I("e^()"), null],
 
-    ["°′″", () => { if (done && res && typeof res.value === "number") { showDms = !showDms; paint(); } }, "", null, "B"], ["hyp", () => openHyp(), "", null, "C"],
+    ["(−)", I("-"), "log", I("log10("), "A"], ["°′″", toggle(() => { showDms = !showDms; }), "FACT", () => fact(), "B"], ["x⁻¹", I("^(-1)"), "x!", I("!"), "C"],
     ["sin", I("sin("), "sin⁻¹", I("asin("), "D"], ["cos", I("cos("), "cos⁻¹", I("acos("), "E"], ["tan", I("tan("), "tan⁻¹", I("atan("), "F"],
-    ["RCL", () => { rcl = true; alpha = true; paint(); }, "STO", () => { sto = true; alpha = true; paint(); }, null],
 
-    ["ENG", () => { if (done && res && typeof res.value === "number") { if (engOn) engShift++; else { engOn = true; engShift = 0; } paint(); } }, "←ENG", () => { if (done && res && typeof res.value === "number") { if (engOn) engShift--; else { engOn = true; engShift = 0; } paint(); } }, null],
-    ["(", I("("), "%", I("/100"), null], [")", I(")"), ",", I(","), "X"], ["S⇔D", () => { if (done && res) { showExact = !showExact; engOn = false; showDms = false; paint(); } }, "", null, "Y"],
+    ["STO", () => { sto = true; alpha = true; paint(); }, "RECALL", () => { rcl = true; alpha = true; paint(); }, null],
+    ["ENG", toggle(() => { if (engOn) engShift++; else { engOn = true; engShift = 0; } }), "←ENG", toggle(() => { if (engOn) engShift--; else { engOn = true; engShift = 0; } }), ["i", I("i")]],
+    ["(", I("("), "Abs", I("abs("), null], [")", I(")"), ",", I(","), "X"],
+    ["S⇔D", toggle(() => { showExact = !showExact; engOn = false; showDms = false; showMixed = false; }), "ab/c⇔d/c", toggle(() => { showMixed = !showMixed; }), "Y"],
     ["M+", () => { exeIfNeeded(); vars.M = Number(vars.M) + Number(vars.Ans ?? 0); save(); paint(); }, "M−", () => { exeIfNeeded(); vars.M = Number(vars.M) - Number(vars.Ans ?? 0); save(); paint(); }, "M"],
-    ["x", I("x"), "e", I("e"), null],
   ];
 
   function exeIfNeeded() { if (!done && text.trim()) exe(); }
-  // ---------- Auswahlfenster: MENU, SETUP, hyp ----------
+  // ---------- Auswahlfenster: SETUP u. a. ----------
   function overlay(title, items) {
     const close = () => ov.remove();
     const ov = h("div", { class: "modal", onclick: (e) => { if (e.target === ov) close(); } },
@@ -278,29 +348,33 @@ export function schoolCalc(menuItems = []) {
     document.body.append(ov);
   }
   const openMenu = () => showMenu();
-  const openHyp = () => overlay("Hyperbelfunktionen", [["sinh", I("sinh(")], ["cosh", I("cosh(")], ["tanh", I("tanh(")], ["sinh⁻¹", I("asinh(")], ["cosh⁻¹", I("acosh(")], ["tanh⁻¹", I("atanh(")]]);
   const set = (c) => () => { Object.assign(cfg, c); showExact = cfg.exact; save(); paint(); };
   const openSetup = () => overlay("SETUP", [
     [`Winkel: Grad (Deg)${cfg.deg ? " ✓" : ""}`, set({ deg: true })], [`Winkel: Bogenmaß (Rad)${!cfg.deg ? " ✓" : ""}`, set({ deg: false })],
     [`Ausgabe: exakt (Bruch/Wurzel/π)${cfg.exact ? " ✓" : ""}`, set({ exact: true })], [`Ausgabe: dezimal${!cfg.exact ? " ✓" : ""}`, set({ exact: false })],
     [`Zahlenformat: Norm${cfg.fmt === "norm" ? " ✓" : ""}`, set({ fmt: "norm" })],
-    ...[0, 2, 4, 6].map((d) => [`Fix ${d} Nachkommastellen${cfg.fmt === "fix" && cfg.digits === d ? " ✓" : ""}`, set({ fmt: "fix", digits: d })]),
+    ...[0, 1, 2, 3, 4, 6, 9].map((d) => [`Fix ${d} Nachkommastellen${cfg.fmt === "fix" && cfg.digits === d ? " ✓" : ""}`, set({ fmt: "fix", digits: d })]),
     ...[3, 5, 10].map((d) => [`Sci ${d} signifikante Stellen${cfg.fmt === "sci" && cfg.digits === d ? " ✓" : ""}`, set({ fmt: "sci", digits: d })]),
     ["Variablen A–F, X, Y, M auf 0 setzen", () => { for (const k of "ABCDEFXYM") vars[k] = 0; save(); paint(); }],
     ["Verlauf löschen", () => { hist = []; save(); }],
   ]);
+  // [Haupt, Aktion, Klasse, SHIFT-Beschriftung, SHIFT-Aktion, ALPHA [Beschriftung, Aktion]]
   const NUM = [
-    ["7", I("7")], ["8", I("8")], ["9", I("9")], ["DEL", del, "k-del"], ["AC", ac, "k-del"],
-    ["4", I("4")], ["5", I("5")], ["6", I("6")], ["×", I("×"), "k-op", "nPr", I("nPr(,)")], ["÷", I("÷"), "k-op", "nCr", I("nCr(,)")],
-    ["1", I("1")], ["2", I("2")], ["3", I("3")], ["+", I("+"), "k-op"], ["−", I("−"), "k-op"],
-    ["0", I("0")], [".", I("."), "", "Ran#", I("random()")], ["×10^x", I("e"), "k-op", "π", I("π")], ["Ans", I("Ans"), "k-op"], ["=", exe, "k-exe"],
+    ["7", I("7"), "", "CONST", openConst], ["8", I("8"), "", "CONV", openConv], ["9", I("9"), "", "RESET", openReset], ["DEL", del, "k-del"], ["AC", ac, "k-del"],
+    ["4", I("4")], ["5", I("5")], ["6", I("6")], ["×", I("×"), "k-op", "nPr", I("nPr(,)"), ["GCD", I("GCD(,)")]], ["÷", I("÷"), "k-op", "nCr", I("nCr(,)"), ["LCM", I("LCM(,)")]],
+    ["1", I("1")], ["2", I("2")], ["3", I("3")], ["+", I("+"), "k-op", "Pol", I("Pol(,)"), ["Int", I("Int(")]], ["−", I("−"), "k-op", "Rec", I("Rec(,)"), ["Intg", I("Intg(")]],
+    ["0", I("0"), "", "Rnd", () => insert(cfg.fmt === "fix" ? `RndFix(,${cfg.digits})` : "Rnd("), null], [".", I("."), "", "Ran#", I("random()"), ["RanInt", I("RanInt(,)")]],
+    ["×10^x", I("e"), "k-op", "π", I("π"), ["e", I("e")]], ["Ans", I("Ans"), "k-op", "%", I("/100")], ["=", exe, "k-exe", "≈", approx],
   ];
   const press = (fn, sfn) => (e) => { e.preventDefault(); if (shift && sfn) { shift = false; sfn(); } else { const wasShift = shift; shift = false; fn(); if (wasShift) paint(); } };
+  const alphaLabel = (av) => (av ? span("lbl-a", Array.isArray(av) ? av[0] : av) : null);
+  const onAlpha = (av) => { if (Array.isArray(av)) { alpha = false; av[1](); paint(); } else variable(av); };
   const fnKeys = KEYS.map(([lab, fn, slab, sfn, avar, cls = ""]) => h("div", { class: `fxk ${cls}` },
-    h("div", { class: "fxk-lbl" }, slab ? span("lbl-s", slab) : span("lbl-s", ""), avar ? span("lbl-a", avar) : null),
-    h("button", { class: "fxb", onclick: (e) => { e.preventDefault(); if (alpha && avar) return variable(avar); if (mode !== "comp" && COMP_ONLY.has(lab) && !shift) return; press(fn, sfn)(e); } }, lab)));
-  const numKeys = NUM.map(([lab, fn, cls = "", slab, sfn]) => h("div", { class: `fxk ${cls}` },
-    h("div", { class: "fxk-lbl" }, span("lbl-s", slab ?? "")), h("button", { class: "fxb fxb-num", onclick: press(fn, sfn) }, lab)));
+    h("div", { class: "fxk-lbl" }, span("lbl-s", slab || ""), alphaLabel(avar)),
+    h("button", { class: "fxb", onclick: (e) => { e.preventDefault(); if (alpha && avar) return onAlpha(avar); if (mode !== "comp" && COMP_ONLY.has(lab) && !shift) return; press(fn, sfn)(e); } }, lab)));
+  const numKeys = NUM.map(([lab, fn, cls = "", slab, sfn, avar]) => h("div", { class: `fxk ${cls}` },
+    h("div", { class: "fxk-lbl" }, span("lbl-s", slab ?? ""), alphaLabel(avar)),
+    h("button", { class: "fxb fxb-num", onclick: (e) => { e.preventDefault(); if (mode === "menu" && /^[1-9]$/.test(lab)) return pickTile(Number(lab)); if (alpha && avar) return onAlpha(avar); press(fn, sfn)(e); } }, lab)));
 
   // Physische Tastatur (Computer)
   const onKey = (e) => {

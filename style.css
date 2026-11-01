@@ -171,3 +171,10 @@ button.action { width: 100%; border: 0; background: none; font: inherit; color: 
 .lcd-screen .footer { margin: 4px 4px 0; font-size: 11px; }
 .lcd-screen input.fx-active { outline: 2px solid #1d5e3c; border-radius: 3px; background: rgba(255,255,255,.55); }
 .lcd-screen .graph-canvas { height: 260px; }
+.fx-special { font: 600 18px -apple-system, sans-serif; white-space: normal; text-align: right; }
+.scr-tile { position: relative; }
+.scr-nr { position: absolute; right: 4px; bottom: 3px; font: 700 10px -apple-system, sans-serif; background: #2c3a31; color: #c3cdbd; border-radius: 3px; padding: 0 3px; }
+.fx-var-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.fx-var-row span { min-width: 2.5em; font-weight: 600; }
+.fx-var-row input { flex: 1; font: 17px -apple-system, sans-serif; padding: 6px 8px; border: 1px solid var(--sep); border-radius: 8px; background: var(--bg); color: var(--text); }
+.fxk-lbl .lbl-s, .fxk-lbl .lbl-a { white-space: nowrap; overflow: hidden; text-overflow: clip; }

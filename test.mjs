@@ -86,3 +86,17 @@ console.log("Klammerergänzung ok.");
 r = M.quadraticExact(1, -5, 6); assert.deepEqual(r.text, ["2", "3"]); r = M.quadraticExact(2, 1, -1); assert.deepEqual(r.text, ["-1", "1/2"]);
 r = M.quadraticExact(1, -2, 5); assert.deepEqual(r.text, ["1 − 2i", "1 + 2i"]);
 console.log("Quadratisch exakt zusammengefasst ok.");
+// Schulrechner-Funktionen
+const arr = (src, opt) => { const v = M.evaluate(src, opt).value; return (v.toArray ? v.toArray() : v).map(Number); };
+let pr = arr("Pol(3, 4)", { deg: true }); near(pr[0], 5); near(pr[1], 53.13010235415598, 1e-9);
+pr = arr("Rec(2, 60)", { deg: true }); near(pr[0], 1, 1e-12); near(pr[1], Math.sqrt(3), 1e-12);
+pr = arr("Pol(0, 1)"); near(pr[1], Math.PI / 2, 1e-12);
+assert.deepEqual(arr("divR(17, 5)"), [3, 2]);
+assert.equal(M.evaluate("Int(-2.7)").decimal, "-2"); assert.equal(M.evaluate("Intg(-2.7)").decimal, "-3");
+assert.equal(M.evaluate("mixed(2, 1, 3)").exact, "7/3"); assert.equal(M.evaluate("mixed(-1, 1, 2)").exact, "-3/2");
+assert.equal(M.evaluate("GCD(84, 36)").decimal, "12"); assert.equal(M.evaluate("LCM(4, 6)").decimal, "12");
+assert.equal(M.evaluate("RndFix(2.345678, 2)").decimal, "2.35");
+for (let i = 0; i < 50; i++) { const v = Number(M.evaluate("RanInt(1, 6)").value); assert.ok(Number.isInteger(v) && v >= 1 && v <= 6); }
+assert.equal(M.evaluate("product(x, 1, 5)").decimal, "120");
+assert.equal(M.evaluate("5 inch to cm").decimal, "12.7 cm");
+console.log("Schulrechner-Funktionen ok.");
