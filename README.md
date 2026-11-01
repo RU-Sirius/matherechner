@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.6.1)
+## Funktionen (v1.6.2)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
@@ -78,7 +78,7 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
 - **Zuletzt verwendet**: die letzten Rechner oben auf der Startseite
 - **Datensicherung** (Einstellungen): Projekte, Favoriten und Einstellungen als Datei exportieren und wieder einspielen (iPhone: Teilen-Menü → „In Dateien sichern“)
 - **Weitere Apps** (Einstellungen): Links zu den anderen Rechnern der Reihe
-- Favoriten, Projekte, PDF über das Teilen-Menü, Projektberichte, Offline-Betrieb, automatische Updates
+- Favoriten, Projekte, PDF über das Teilen-Menü (Werte exakt rechtsbündig), Projektberichte, Offline-Betrieb, automatische Updates
 
 ## Hinweise
 Numerische Verfahren (Nullstellen, Integrale, Eigenwerte) liefern Näherungswerte. Nullstellen- und Punktsuche

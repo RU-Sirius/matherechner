@@ -1,5 +1,5 @@
 // Offline-Cache. Bei Änderungen an den Dateien die Versionsnummer erhöhen.
-const CACHE = "matherechner-v13";
+const CACHE = "matherechner-v14";
 const FILES = ["index.html", "style.css", "app.js", "extras.js", "mx.js", "mathlib.js", "vendor/math.js", "ui.js", "views.js", "views2.js", "views3.js", "geo.js", "graph.js", "fx.js", "lcdmodes.js",
                "projects.js", "pdf.js", "install.js", "icons.js", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"];
 
