@@ -264,3 +264,7 @@ body.calc-home main { padding-bottom: 0; }
 .const-row.sel { background: #1d2320; color: #c3cdbd; }
 .const-nr { font-weight: 700; } .const-sym { font: italic 1.1em "Times New Roman", Georgia, serif; }
 .const-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .const-val { text-align: right; white-space: nowrap; font-size: .92em; }
+/* Rechner-Ansicht: Seitentitel ausblenden (Platz für das Gehäuse), Schriftzug rot */
+body.calc-home header h1 { display: none; }
+body.calc-home header { padding-bottom: 0; min-height: 0; }
+.fx .fx-brand { color: #e5484d; letter-spacing: .06em; font-size: 13px; }
