@@ -268,3 +268,10 @@ body.calc-home main { padding-bottom: 0; }
 body.calc-home header h1 { display: none; }
 body.calc-home header { padding-bottom: 0; min-height: 0; }
 .fx .fx-brand { color: #e5484d; letter-spacing: .06em; font-size: 13px; }
+/* Schmale Bildschirme: lange Auswahltexte und Eingaben nicht über den Rand schieben */
+.row { min-width: 0; }
+.row .label { min-width: 0; overflow-wrap: anywhere; }
+.row select { min-width: 0; max-width: 60%; flex: 0 1 auto; text-overflow: ellipsis; overflow: hidden; }
+.row input { min-width: 0; }
+.row.wide input { width: auto; flex: 1 1 8em; max-width: 11em; }
+.row .hint, .row .value, .footer, .msg { overflow-wrap: anywhere; }

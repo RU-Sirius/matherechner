@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.8.1)
+## Funktionen (v1.8.2)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
@@ -81,6 +81,7 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
 - Einheiten umrechnen · physikalische Konstanten
 
 **Arbeiten mit der App**
+- **Eingabe:** Formelfelder (z. B. f(x) im Plotter) öffnen immer die volle Tastatur, Zahlenfelder standardmäßig auch (umstellbar in den Einstellungen); Signifikanztest auch bei großem n schnell; Σ/Π, Wertetabelle und Verteilungen frieren bei extremen Grenzen nicht mehr ein
 - **Suche** auf der Startseite (auch nach Synonymen, z. B. „Wallbox“, „FI“, „pq-Formel“); Enter öffnet den ersten Treffer
 - **Zuletzt verwendet**: die letzten Rechner oben auf der Startseite
 - **Datensicherung** (Einstellungen): Projekte, Favoriten und Einstellungen als Datei exportieren und wieder einspielen (iPhone: Teilen-Menü → „In Dateien sichern“)

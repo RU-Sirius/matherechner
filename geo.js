@@ -1,5 +1,5 @@
 // Analytische Geometrie im Raum (Geraden, Ebenen, Punkte), Signifikanztest (Binomial), zweistufiges Baumdiagramm.
-import { binomCdf } from "./mx.js";
+import { binomCdf, binomPdf } from "./mx.js";
 
 const fail = (m = "range") => { throw new Error(m); };
 export const sub = (a, b) => a.map((x, i) => x - b[i]);
@@ -65,7 +65,9 @@ export function pointLine(Q, P, u) { check3(Q, P, u); if (isZero(u, 1)) fail("de
 // ---------- Signifikanztest (Binomialverteilung), H0: p = p0 ----------
 export function binomialTest({ n, p0, alpha, side, p1 = null, k = null }) {
   if (!Number.isInteger(n) || n < 1 || n > 100000 || !(p0 > 0 && p0 < 1) || !(alpha > 0 && alpha < 1)) fail();
-  const cdf = (x) => (x < 0 ? 0 : binomCdf(x, n, p0)), right = (x) => 1 - cdf(x - 1); // P(X ≥ x)
+  // kumulierte Verteilung einmal berechnen (linear statt quadratisch – sonst hängt die Seite bei großem n)
+  const C = new Float64Array(n + 1); { let acc = 0; for (let k = 0; k <= n; k++) { acc += binomPdf(k, n, p0); C[k] = Math.min(1, acc); } }
+  const cdf = (x) => (x < 0 ? 0 : x >= n ? 1 : C[x]), right = (x) => (x <= 0 ? 1 : 1 - C[x - 1]); // P(X ≥ x)
   const r = { side };
   const aSide = side === "two" ? alpha / 2 : alpha;
   if (side === "left" || side === "two") { let kl = -1; while (kl + 1 <= n && cdf(kl + 1) <= aSide) kl++; r.kLeft = kl; }      // Ablehnung X ≤ kl

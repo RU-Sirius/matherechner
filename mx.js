@@ -249,7 +249,8 @@ export function derivative(src, n = 1, variable = "x") {
   return math.simplify(node);
 }
 export function sumProduct(f, a, b, product = false) {
-  if (!Number.isInteger(a) || !Number.isInteger(b) || b < a || b - a > 1e6) fail();
+  // nur sicher darstellbare Ganzzahlen – sonst ist k + 1 = k und die Schleife endet nie
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || b < a || b - a > 1e6) fail();
   let acc = product ? 1 : 0;
   for (let k = a; k <= b; k++) acc = product ? acc * f(k) : acc + f(k);
   return acc;
@@ -464,9 +465,9 @@ export function normalInv(p, mu = 0, s = 1) {
 }
 const logChoose = (n, k) => math.lgamma(n + 1) - math.lgamma(k + 1) - math.lgamma(n - k + 1);
 export function binomPdf(k, n, p) { if (!Number.isInteger(n) || n < 0 || !(p >= 0 && p <= 1)) fail(); if (!Number.isInteger(k) || k < 0 || k > n) return 0; if (p === 0) return k === 0 ? 1 : 0; if (p === 1) return k === n ? 1 : 0; return Math.exp(logChoose(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p)); }
-export function binomCdf(k, n, p) { let s = 0; for (let i = 0; i <= Math.min(Math.floor(k), n); i++) s += binomPdf(i, n, p); return Math.min(1, s); }
+export function binomCdf(k, n, p) { if (Math.min(k, n) > 1e7) fail("range"); let s = 0; for (let i = 0; i <= Math.min(Math.floor(k), n); i++) s += binomPdf(i, n, p); return Math.min(1, s); }
 export function poissonPdf(k, l) { if (!(l > 0)) fail(); if (!Number.isInteger(k) || k < 0) return 0; return Math.exp(k * Math.log(l) - l - math.lgamma(k + 1)); }
-export function poissonCdf(k, l) { let s = 0; for (let i = 0; i <= Math.floor(k); i++) s += poissonPdf(i, l); return Math.min(1, s); }
+export function poissonCdf(k, l) { if (k > 1e7) fail("range"); let s = 0; for (let i = 0; i <= Math.floor(k); i++) s += poissonPdf(i, l); return Math.min(1, s); }
 
 // ---------- Zahlentheorie & Zahlensysteme ----------
 export function factorize(n) {

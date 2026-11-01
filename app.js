@@ -1,4 +1,4 @@
-import { LEGAL, h, section, resultRow, navRow, segmented, clearCurrentState, setPreset } from "./ui.js";
+import { LEGAL, h, section, resultRow, navRow, segmented, clearCurrentState, setPreset, keyboardMode, setKeyboardMode } from "./ui.js";
 import * as V from "./views.js";
 import * as V2 from "./views2.js";
 import { graphView } from "./graph.js";
@@ -97,6 +97,8 @@ const SEARCH_EXTRA = { calc: "taschenrechner schulrechner casio", poly: "nullste
 function settingsView() {
   const sv = localStorage.getItem(START_KEY) || "last";
   return [
+    ...section("Eingabe", [segmented([["num", "Ziffernblock"], ["full", "Volle Tastatur"]], keyboardMode(), (v) => { setKeyboardMode(v); route(); })],
+      "Tastatur für Zahlenfelder auf iPhone und iPad. Der Ziffernblock hat kein Minuszeichen und keine Buchstaben – für negative Werte, Präfixe (z. B. 4,7k) oder Ausdrücke (2pi, 1/3) die volle Tastatur wählen. Formel- und Textfelder nutzen immer die volle Tastatur."),
     ...section("Startansicht", [segmented([["list", "Liste"], ["calc", "Rechner"], ["last", "Zuletzt"]], sv, (v) => { localStorage.setItem(START_KEY, v); if (v !== "last") localStorage.setItem(HOME_KEY, v); route(); })],
       "Legt fest, womit die App startet: Funktionsliste, Rechner-Ansicht oder die zuletzt verwendete Ansicht. Umschalten geht jederzeit oben auf der Startseite."),
     ...X.backupSection(),
@@ -104,7 +106,7 @@ function settingsView() {
     ...X.appsSection(),
     ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
       "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
-    ...section("", [resultRow("Version", "1.8.1 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
+    ...section("", [resultRow("Version", "1.8.2 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
   ];
 }
 

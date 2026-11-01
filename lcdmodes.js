@@ -344,7 +344,7 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
         const a = evNum(T.a), b = evNum(T.b), st = evNum(T.s);
         if (!(st > 0) || b < a || (b - a) / st > 200) throw new Error("Math ERROR: Bereich (max. 200 Zeilen)");
         const f = M.compileFn(T.f, { deg: cfg.deg }), g = T.g.trim() ? M.compileFn(T.g, { deg: cfg.deg }) : null;
-        const rows = []; for (let k = 0; a + k * st <= b + st * 1e-9; k++) rows.push(+(a + k * st).toPrecision(12));
+        const rows = []; for (let k = 0; a + k * st <= b + st * 1e-9 && k <= 200; k++) rows.push(+(a + k * st).toPrecision(12));
         push({ type: "grid", title: "Tabelle", hint: "▲▼  AC: zurück", headers: g ? ["x", "f(x)", "g(x)"] : ["x", "f(x)"], sel: [0, 0], rows: () => rows.length,
           get: (r, c) => { const x = rows[r]; const v = c === 0 ? x : c === 1 ? f(x) : g(x); return Number.isFinite(v) ? +v.toPrecision(10) : "ERROR"; }, set: () => {}, readonly: true, solve: () => pop() });
       } });

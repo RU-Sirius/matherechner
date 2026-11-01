@@ -244,7 +244,7 @@ export function tableView() {
       if (!(st > 0) || b < a || (b - a) / st > 500) throw new Error("range");
       const f = M.compileFn(s.f), g = s.g.trim() ? M.compileFn(s.g) : null;
       const rows = [];
-      for (let k = 0; a + k * st <= b + st * 1e-9; k++) { const x = +(a + k * st).toPrecision(12); rows.push(h("tr", {}, h("td", {}, r(x)), h("td", {}, r(f(x), 8)), ...(g ? [h("td", {}, r(g(x), 8))] : []))); }
+      for (let k = 0; a + k * st <= b + st * 1e-9 && k <= 500; k++) { const x = +(a + k * st).toPrecision(12); rows.push(h("tr", {}, h("td", {}, r(x)), h("td", {}, r(f(x), 8)), ...(g ? [h("td", {}, r(g(x), 8))] : []))); }
       return [h("div", { class: "row chart-row" }, h("table", { class: "ttable" }, h("tr", {}, h("th", {}, "x"), h("th", {}, "f(x)"), ...(g ? [h("th", {}, "g(x)")] : [])), ...rows))];
     },
     rangeMsg: "Bereich prüfen: Start ≤ Ende, Schrittweite > 0, max. 500 Zeilen.",
