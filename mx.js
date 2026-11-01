@@ -136,8 +136,13 @@ export function autoClose(src) {
   return String(src) + ")".repeat(depth);
 }
 
+// Polarform r∠φ → r·(cos φ + i·sin φ); der Winkel folgt dem eingestellten Winkelmaß (DEG/RAD).
+const POLAR_ARG = String.raw`(?:\d+(?:\.\d+)?(?:e[-+]?\d+)?|[A-Za-z]\w*|\([^()]*(?:\([^()]*\)[^()]*)*\))`;
+const POLAR_RE = new RegExp(`(${POLAR_ARG})\\s*∠\\s*(-?${POLAR_ARG})`, "g");
+export const polarize = (expr) => String(expr).replace(POLAR_RE, "(($1)*(cos($2)+i*sin($2)))");
+
 export function evaluate(src, { deg = false, scope = {} } = {}) {
-  const expr = autoClose(normalize(src).trim());
+  const expr = polarize(autoClose(normalize(src).trim()));
   if (!expr) fail("empty");
   const dec = engine(deg, false).evaluate(expr, scope);
   let exact = null, mixed = null;
@@ -509,3 +514,26 @@ export const CONSTANTS = [
   ["electricConstant", "Elektrische Feldkonstante ε₀"], ["magneticConstant", "Magnetische Feldkonstante μ₀"], ["stefanBoltzmann", "Stefan-Boltzmann-Konstante σ"],
   ["rydberg", "Rydberg-Konstante"], ["bohrRadius", "Bohrscher Radius"], ["molarVolume", "Molares Volumen (ideales Gas)"],
 ];
+
+// ---------- Komplexe Zahlen ----------
+// Darstellung einer komplexen Zahl kartesisch und polar (Winkel in Grad oder Bogenmaß).
+export function complexForms(z, deg = true) {
+  const c = math.complex(z);
+  const r = Math.hypot(c.re, c.im), phi = Math.atan2(c.im, c.re) * (deg ? 180 / Math.PI : 1);
+  const clean = (v) => (Math.abs(v) < 1e-12 ? 0 : v);
+  return { re: clean(c.re), im: clean(c.im), r, phi: clean(phi), cart: num(math.complex(clean(c.re), clean(c.im)), 10),
+           polar: `${num(r, 10)} ∠ ${num(clean(phi), 10)}${deg ? "°" : ""}` };
+}
+export function complexOps(z1src, z2src, { deg = true, n = 2 } = {}) {
+  const ev = (t) => math.complex(evaluate(String(t), { deg }).value);
+  const a = ev(z1src), b = z2src && String(z2src).trim() ? ev(z2src) : null;
+  const out = { z1: a, ops: [] };
+  const add = (label, v) => out.ops.push([label, v]);
+  if (b) {
+    out.z2 = b;
+    add("z₁ + z₂", math.add(a, b)); add("z₁ − z₂", math.subtract(a, b)); add("z₁ · z₂", math.multiply(a, b));
+    if (!(b.re === 0 && b.im === 0)) add("z₁ ÷ z₂", math.divide(a, b));
+  }
+  add(`z₁^${n}`, math.pow(a, n)); add("√z₁ (Hauptwert)", math.sqrt(a)); add("1 / z₁", a.re === 0 && a.im === 0 ? null : math.divide(1, a)); add("konjugiert z̄₁", math.conj(a));
+  return out;
+}

@@ -75,6 +75,10 @@ export function previewNode(text, cursor) {
   return math.parse(t);
 }
 export function natural(text, cursor = null) {
+  if (text.includes("∠")) { // Polarform im Display unverändert zeigen
+    const t = cursor === null ? text : text.slice(0, cursor) + "\u0000" + text.slice(cursor);
+    return span("nm", ...t.split("\u0000").flatMap((part, i) => (i ? [span("caret", ""), part] : [part])));
+  }
   try { return render(cursor === null ? math.parse(M.normalize(text)) : previewNode(text, cursor)); }
   catch {
     if (cursor === null) return span("nc", text);
@@ -309,7 +313,7 @@ export function schoolCalc(menuItems = []) {
   }
   const openOptn = () => overlay("OPTN", [["sinh", I("sinh(")], ["cosh", I("cosh(")], ["tanh", I("tanh(")], ["sinh⁻¹", I("asinh(")], ["cosh⁻¹", I("acosh(")], ["tanh⁻¹", I("atanh(")],
     ["Rnd – auf Anzeigegenauigkeit runden", () => insert(cfg.fmt === "fix" ? `RndFix(,${cfg.digits})` : "Rnd(")], ["Int – ganzzahliger Teil", I("Int(")], ["Intg – größte ganze Zahl ≤ x", I("Intg(")],
-    ["Abs – Betrag", I("abs(")], ["Re – Realteil", I("re(")], ["Im – Imaginärteil", I("im(")], ["arg – Argument", I("arg(")], ["Konjugiert", I("conj(")], ["Π – Produkt", I("product(,,)")]]);
+    ["∠ – Polarform r∠φ (z. B. 5∠30)", I("∠")], ["Abs – Betrag", I("abs(")], ["Re – Realteil", I("re(")], ["Im – Imaginärteil", I("im(")], ["arg – Argument", I("arg(")], ["Konjugiert", I("conj(")], ["Π – Produkt", I("product(,,)")]]);
   const openConst = () => overlay("CONST – Konstanten", M.CONSTANTS.map(([key, label]) => [label, I(key)]));
   const openConv = () => overlay("CONV – Einheit umrechnen (Wert vorher eingeben)", Object.entries(M.UNIT_GROUPS).flatMap(([g, us]) =>
     us.flatMap((u) => us.filter((v) => v !== u).map((v) => [`${g}: ${u} → ${v}`, I(` ${u} to ${v}`)]))).slice(0, 400));
@@ -371,7 +375,8 @@ export function schoolCalc(menuItems = []) {
   const onAlpha = (av) => { if (Array.isArray(av)) { alpha = false; av[1](); paint(); } else variable(av); };
   const fnKeys = KEYS.map(([lab, fn, slab, sfn, avar, cls = ""]) => h("div", { class: `fxk ${cls}` },
     h("div", { class: "fxk-lbl" }, span("lbl-s", slab || ""), alphaLabel(avar)),
-    h("button", { class: "fxb", onclick: (e) => { e.preventDefault(); if (alpha && avar) return onAlpha(avar); if (mode !== "comp" && COMP_ONLY.has(lab) && !shift) return; press(fn, sfn)(e); } }, lab)));
+    h("button", { class: "fxb", onclick: (e) => { e.preventDefault(); if (alpha && avar) return onAlpha(avar); if (mode !== "comp" && COMP_ONLY.has(lab) && !shift) return; press(fn, sfn)(e); } },
+      lab === "∫▢" ? [span("int-glyph", "∫"), "▢"] : lab)));
   const numKeys = NUM.map(([lab, fn, cls = "", slab, sfn, avar]) => h("div", { class: `fxk ${cls}` },
     h("div", { class: "fxk-lbl" }, span("lbl-s", slab ?? ""), alphaLabel(avar)),
     h("button", { class: "fxb fxb-num", onclick: (e) => { e.preventDefault(); if (mode === "menu" && /^[1-9]$/.test(lab)) return pickTile(Number(lab)); if (alpha && avar) return onAlpha(avar); press(fn, sfn)(e); } }, lab)));

@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.4.0)
+## Funktionen (v1.4.1)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
@@ -29,7 +29,7 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
 - Taschenrechner mit Tastenfeld oder Systemtastatur, Verlauf, Ans, Variablen, DEG/RAD
 - Exakte Ergebnisse als Bruch, gemischte Zahl, Wurzelform (z. B. 2√3) oder Vielfaches von π – Umschalten S⇔D
 - Komplexe Zahlen, Fakultät, nCr/nPr, Logarithmen, Hyperbelfunktionen, Konstanten
-- Teiler, Primfaktoren, ggT/kgV · Zahlensysteme (Bin/Okt/Dez/Hex, beliebig groß) · komplexe Zahlen kartesisch ↔ polar
+- Teiler, Primfaktoren, ggT/kgV · Zahlensysteme (Bin/Okt/Dez/Hex, beliebig groß) · **komplexe Zahlen**: z₁ ± z₂, z₁·z₂, z₁/z₂, zⁿ, √z, 1/z, konjugiert, Betrag/Argument, freier Ausdruck – Ergebnisse kartesisch und polar; Eingabe auch als r∠φ (auch im Taschenrechner, ∠ unter OPTN)
 
 **Grafik**
 - Funktionsplotter für bis zu 4 Funktionen, Verschieben und Zoomen per Maus oder Finger

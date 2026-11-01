@@ -196,3 +196,4 @@ button.action { width: 100%; border: 0; background: none; font: inherit; color: 
 .home-switch.compact .seg { margin: 4px 16px 0; }
 .home-switch.compact .seg button { padding: 5px 0; font-size: 13px; }
 body.calc-home main { padding-bottom: 0; }
+.int-glyph { font: italic 1.45em/1 "STIX Two Math", "Cambria Math", "Latin Modern Math", "Times New Roman", Times, serif; margin-right: 1px; vertical-align: -0.12em; }

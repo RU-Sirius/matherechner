@@ -100,3 +100,13 @@ for (let i = 0; i < 50; i++) { const v = Number(M.evaluate("RanInt(1, 6)").value
 assert.equal(M.evaluate("product(x, 1, 5)").decimal, "120");
 assert.equal(M.evaluate("5 inch to cm").decimal, "12.7 cm");
 console.log("Schulrechner-Funktionen ok.");
+// Komplexe Zahlen & Polarform
+assert.equal(M.evaluate("(2+3i)*(1-i)").decimal, "5 + i");
+let zz = M.complexForms(M.evaluate("5∠53.13010235415598", { deg: true }).value); near(zz.re, 3, 1e-9); near(zz.im, 4, 1e-9);
+zz = M.complexForms(M.evaluate("2∠(pi/2)").value, false); near(zz.re, 0, 1e-12); near(zz.im, 2, 1e-12);
+zz = M.complexForms(M.math.complex(3, 4), true); near(zz.r, 5); near(zz.phi, 53.13010235415598, 1e-9);
+zz = M.complexForms(M.evaluate("1∠90 + 1∠0", { deg: true }).value); near(zz.re, 1, 1e-12); near(zz.im, 1, 1e-12);
+let ops = M.complexOps("3+4i", "1-2i", { deg: true, n: 2 }); const get = (l) => ops.ops.find(([k]) => k === l)[1];
+near(get("z₁ · z₂").re, 11); near(get("z₁ · z₂").im, -2); near(get("z₁ ÷ z₂").re, -1); near(get("z₁ ÷ z₂").im, 2);
+near(get("z₁^2").re, -7); near(get("z₁^2").im, 24); near(get("√z₁ (Hauptwert)").re, 2); near(get("√z₁ (Hauptwert)").im, 1);
+console.log("Komplexe Zahlen ok.");

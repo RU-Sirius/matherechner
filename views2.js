@@ -192,19 +192,29 @@ export function bases() {
 
 export function complexView() {
   return calcView({
-    init: { mode: "cart", re: "3", im: "4", abs: "5", arg: "53.13", deg: "deg" },
-    inputs: (s, { field, set }) => [...section("Komplexe Zahl", [segmented([["cart", "a + bi → Polar"], ["polar", "Polar → a + bi"]], s.mode, (v) => set("mode", v)),
-      segmented([["deg", "Grad"], ["rad", "Bogenmaß"]], s.deg, (v) => set("deg", v)),
-      ...(s.mode === "cart" ? [field("re", "Realteil a", "", "text"), field("im", "Imaginärteil b", "", "text")] : [field("abs", "Betrag r", "", "text"), field("arg", "Argument φ", s.deg === "deg" ? "°" : "rad", "text")])])],
-    compute: (s) => {
-      const k = s.deg === "deg" ? Math.PI / 180 : 1;
-      let re, im;
-      if (s.mode === "cart") { re = ev(s.re); im = ev(s.im); } else { const rr = ev(s.abs), ph = ev(s.arg) * k; re = rr * Math.cos(ph); im = rr * Math.sin(ph); }
-      const absV = Math.hypot(re, im), arg = Math.atan2(im, re) / k;
-      return [resultRow("Kartesisch", M.num(M.math.complex(re, im), 10), "good"), resultRow("Betrag r", r(absV)), resultRow(`Argument φ (${s.deg === "deg" ? "°" : "rad"})`, r(arg)),
-              resultRow("Polarform", `${r(absV, 8)} · e^(i·${r(arg * k, 8)})`), resultRow("Konjugiert", M.num(M.math.complex(re, -im), 10))];
+    init: { deg: "deg", z1: "3+4i", z2: "1-2i", n: "2", expr: "(2+3i)·(1−i) + 2∠30" },
+    inputs: (s, { field, set }) => [
+      ...section("Winkelmaß", [segmented([["deg", "Grad"], ["rad", "Bogenmaß"]], s.deg, (v) => set("deg", v))]),
+      ...section("Zahlen (a+bi oder r∠φ)", [field("z1", "z₁", "", "text"), field("z2", "z₂ (optional)", "", "text"), field("n", "Exponent n für z₁ⁿ", "")]),
+      ...section("Freier Ausdruck", [field("expr", "Ausdruck", "", "text")], "Beliebige Rechnung mit i und r∠φ, z. B. (1+i)^8, sqrt(−9), e^(i·π), conj(2−i)/(1+i), abs(3+4i)."),
+    ],
+    compute: (s, p) => {
+      const deg = s.deg === "deg", F = (z) => M.complexForms(z, deg);
+      const row = (label, z) => { if (z === null) return resultRow(label, "nicht definiert"); const f = F(z); return h("div", { class: "row" }, h("span", { class: "label" }, label),
+        h("span", { class: "value" }, f.cart, h("div", { class: "hint", style: "font-weight:400;font-size:13px" }, f.polar))); };
+      const rows = [];
+      try {
+        const o = M.complexOps(s.z1, s.z2, { deg, n: p(s.n) ?? 2 });
+        rows.push(row("z₁", o.z1), ...(o.z2 ? [row("z₂", o.z2)] : []), ...o.ops.map(([l, z]) => row(l, z)));
+        const f1 = F(o.z1); rows.push(resultRow("|z₁|", M.num(f1.r)), resultRow(`arg z₁`, `${M.num(f1.phi)}${deg ? "°" : " rad"}`));
+      } catch { rows.push(msgRow("z₁/z₂: Eingabe nicht lesbar – z. B. 3+4i, −2i, 5∠30 oder (1+i)/2.", "error")); }
+      if (s.expr.trim()) {
+        try { rows.push(row("Freier Ausdruck =", M.math.complex(M.evaluate(s.expr, { deg }).value))); }
+        catch { rows.push(msgRow("Freier Ausdruck: nicht lesbar.", "error")); }
+      }
+      return rows;
     },
-    footer: "Rechnen mit komplexen Zahlen ist direkt im Taschenrechner möglich, z. B. (2+3i)·(1−i) oder sqrt(−4).",
+    footer: "Ergebnisse jeweils kartesisch (a + bi) und polar (r ∠ φ). Wurzeln liefern den Hauptwert. Im Taschenrechner geht r∠φ ebenfalls; das ∠ steht unter OPTN, i unter ALPHA + ENG.",
   });
 }
 
