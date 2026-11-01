@@ -104,7 +104,7 @@ function settingsView() {
     ...X.appsSection(),
     ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
       "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
-    ...section("", [resultRow("Version", "1.6.2 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
+    ...section("", [resultRow("Version", "1.6.3 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
   ];
 }
 
