@@ -388,9 +388,20 @@ export function schoolCalc(menuItems = []) {
   };
   document.addEventListener("keydown", onKey);
   setTimeout(paint, 0);
-  return h("div", { class: "fx" },
+  const fxEl = h("div", { class: "fx" },
     h("div", { class: "fx-top" }, span("fx-brand", "MatheRechner"), span("fx-model", "Schulrechner-Ansicht")),
     lcd, screen,
     h("div", { class: "fx-fn" }, ...fnKeys),
     h("div", { class: "fx-num" }, ...numKeys));
+  // Gehäuse an die verfügbare Bildschirmhöhe anpassen – kein Scrollen nötig. Tasten und Schrift skalieren per CSS mit.
+  const fit = () => {
+    if (!fxEl.isConnected) { window.removeEventListener("resize", fit); window.visualViewport?.removeEventListener("resize", fit); return; }
+    const top = fxEl.getBoundingClientRect().top + window.scrollY;
+    const avail = (window.visualViewport?.height ?? window.innerHeight) - top - 6;
+    fxEl.style.height = `${Math.max(430, Math.min(avail, 900))}px`;
+    fxEl.style.setProperty("--fxh", `${Math.max(430, Math.min(avail, 900))}px`);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(fit));
+  window.addEventListener("resize", fit); window.visualViewport?.addEventListener("resize", fit);
+  return fxEl;
 }

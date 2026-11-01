@@ -57,8 +57,11 @@ const GROUPS = [
 // Umschalter auf der Startseite: Liste oder komplette Rechner-Ansicht (wird gespeichert)
 const HOME_KEY = "mx:homeMode";
 function homeSwitch(mode) {
-  return h("div", { class: "home-switch" }, segmented([["list", "Liste"], ["calc", "Rechner"]], mode, (m) => { localStorage.setItem(HOME_KEY, m); route(); }));
+  return h("div", { class: "home-switch" + (mode === "calc" ? " compact" : "") }, segmented([["list", "Liste"], ["calc", "Rechner"]], mode, (m) => { localStorage.setItem(HOME_KEY, m); route(); }));
 }
+// Startansicht aus den Einstellungen beim Öffnen der App anwenden ("last" = zuletzt verwendete beibehalten)
+const START_KEY = "mx:startView";
+{ const sv = localStorage.getItem(START_KEY); if (sv === "list" || sv === "calc") localStorage.setItem(HOME_KEY, sv); }
 function home() {
   const mode = localStorage.getItem(HOME_KEY) || "list";
   if (mode === "calc") return [homeSwitch(mode), schoolCalc(MENU_ITEMS())];
@@ -77,11 +80,14 @@ function homeList() {
 }
 
 function settingsView() {
+  const sv = localStorage.getItem(START_KEY) || "last";
   return [
+    ...section("Startansicht", [segmented([["list", "Liste"], ["calc", "Rechner"], ["last", "Zuletzt"]], sv, (v) => { localStorage.setItem(START_KEY, v); if (v !== "last") localStorage.setItem(HOME_KEY, v); route(); })],
+      "Legt fest, womit die App startet: Funktionsliste, Rechner-Ansicht oder die zuletzt verwendete Ansicht. Umschalten geht jederzeit oben auf der Startseite."),
     ...section("Haftungshinweis", [h("div", { class: "row" }, h("span", { class: "hint" }, LEGAL))]),
     ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
       "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
-    ...section("", [resultRow("Version", "1.3.2 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
+    ...section("", [resultRow("Version", "1.4.0 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
   ];
 }
 
@@ -98,8 +104,10 @@ function route() {
   else if (key === "report" && arg) { title = "Projektbericht"; nodes = reportView(decodeURIComponent(arg)); }
   else { title = "MatheRechner"; nodes = home(); }
   const isHome = title === "MatheRechner";
+  const calcHome = isHome && (localStorage.getItem(HOME_KEY) || "list") === "calc";
   titleEl.textContent = title;
-  header.classList.toggle("sub", !isHome);
+  header.classList.toggle("sub", !isHome || calcHome); // in der Rechner-Ansicht kompakter Kopf
+  document.body.classList.toggle("calc-home", calcHome);
   back.hidden = isHome;
   favBtn.hidden = !isTool;
   if (isTool) {

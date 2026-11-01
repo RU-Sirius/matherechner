@@ -13,9 +13,10 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.3.0)
+## Funktionen (v1.4.0)
 
 **Rechnen**
+- **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
 - **Startseite mit Umschalter „Liste | Rechner“:** Im Rechner-Modus zeigt die App nur das Rechnergehäuse; über **MENU** öffnen sich alle Funktionen (Gleichungen, Analysis, Matrizen, Statistik, Plotter …) **im Display** und werden mit dem Rechner-Tastenfeld bedient (Feld antippen, ▲▼ wechselt Felder, = weiter, DEL/AC)
 - Zahlenfelder akzeptieren Rechenausdrücke wie 1/3, √2, 2π
 - **Taschenrechner mit Umschalter „Standard | Schulrechner“** (Wahl wird gespeichert); fehlende schließende Klammern werden am Ende automatisch ergänzt

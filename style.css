@@ -178,3 +178,21 @@ button.action { width: 100%; border: 0; background: none; font: inherit; color: 
 .fx-var-row span { min-width: 2.5em; font-weight: 600; }
 .fx-var-row input { flex: 1; font: 17px -apple-system, sans-serif; padding: 6px 8px; border: 1px solid var(--sep); border-radius: 8px; background: var(--bg); color: var(--text); }
 .fxk-lbl .lbl-s, .fxk-lbl .lbl-a { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+/* ---------- Rechner passt in die Bildschirmhöhe ---------- */
+.fx { display: flex; flex-direction: column; box-sizing: border-box; padding: 8px 10px max(10px, env(safe-area-inset-bottom)); margin-top: 6px; border-radius: 22px; }
+.fx-top { padding: 0 6px 4px; flex: 0 0 auto; }
+.fx-brand { font-size: 12px; } .fx-model { font-size: 10px; }
+.fx .lcd { flex: 0 0 auto; height: 21%; min-height: 0; border-width: 4px; padding: 4px 8px 6px; overflow: hidden; }
+.fx .lcd-in { font-size: clamp(16px, calc(var(--fxh, 700px) * .028), 22px); padding: 2px 0; }
+.fx .lcd-out { font-size: clamp(20px, calc(var(--fxh, 700px) * .042), 30px); min-height: 0; }
+.fx .lcd-screen { height: 40%; max-height: none; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.fx-fn { flex: 5.3 1 0; min-height: 0; margin-top: 8px; gap: 2px 5px; grid-template-rows: repeat(5, 1fr); }
+.fx-num { flex: 4.6 1 0; min-height: 0; margin-top: 6px; gap: 2px 7px; grid-template-rows: repeat(4, 1fr); }
+.fxk { min-height: 0; }
+.fxk-lbl { font-size: clamp(7.5px, calc(var(--fxh, 700px) * .0135), 10px); height: 1.3em; min-height: 1.3em; line-height: 1.3em; flex: 0 0 auto; }
+.fxb { flex: 1 1 auto; min-height: 0; padding: 0; font-size: clamp(10.5px, calc(var(--fxh, 700px) * .02), 14px); }
+.fxb-num { padding: 0; font-size: clamp(15px, calc(var(--fxh, 700px) * .032), 22px); }
+.home-switch.compact { max-width: 240px; margin: 0 auto; }
+.home-switch.compact .seg { margin: 4px 16px 0; }
+.home-switch.compact .seg button { padding: 5px 0; font-size: 13px; }
+body.calc-home main { padding-bottom: 0; }
