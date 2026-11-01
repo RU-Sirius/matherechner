@@ -72,7 +72,7 @@ export function saveBar(routeKey, title, root) {
       h("button", { class: "btn", onclick: () => {
         const date = fmtDate(new Date().toISOString());
         sharePdf(`${safeFilename(title)}.pdf`, { title, subtitle: `MatheRechner · ${date}`,
-          blocks: snapshot(root).map((g) => ({ heading: g.title, rows: g.rows })), footer: `Built by Lukas Kopp · ${LEGAL}` });
+          blocks: snapshot(root).map((g) => ({ heading: g.title, rows: g.rows })), footer: `Built by R. U. Sirius? · ${LEGAL}` });
       } }, "PDF teilen / sichern"),
     ), h("div", { class: "btnrow" }, h("button", { class: "btn", style: "flex:1;opacity:.8", onclick: () => window.print() }, "Drucken"))],
     "„PDF teilen / sichern“ öffnet auf dem iPhone das Teilen-Menü (z. B. „In Dateien sichern“, Mail, Drucken). Am Computer wird die Datei heruntergeladen."));
@@ -105,12 +105,12 @@ export function reportView(project) {
         title: `Projektbericht: ${project}`,
         subtitle: `MatheRechner · ${entries.length} Berechnung(en) · erstellt ${fmtDate(new Date().toISOString())}`,
         blocks: entries.flatMap((e) => [{ big: e.name, text: `${e.title} · ${fmtDate(e.date)}` }, ...e.data.map((g) => ({ heading: g.title, rows: g.rows }))]),
-        footer: `Built by Lukas Kopp · ${LEGAL}` }) }, "Bericht als PDF"),
+        footer: `Built by R. U. Sirius? · ${LEGAL}` }) }, "Bericht als PDF"),
       h("button", { class: "btn", style: "opacity:.8", onclick: () => window.print() }, "Drucken"))])),
     ...entries.flatMap((e) => [
       h("div", { class: "report-head" }, h("h2", { style: "font-size:18px" }, e.name), h("div", { class: "report-meta" }, `${e.title} · ${fmtDate(e.date)}`)),
       ...e.data.flatMap((g) => section(g.title, g.rows.map(([a, b]) => resultRow(a, b)))),
     ]),
-    h("div", { class: "print-only", style: "display:block" }, `MatheRechner – Built by Lukas Kopp · ${LEGAL}`),
+    h("div", { class: "print-only", style: "display:block" }, `MatheRechner – Built by R. U. Sirius? · ${LEGAL}`),
   ];
 }

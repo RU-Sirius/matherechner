@@ -72,7 +72,7 @@ function homeList() {
     ...section("", [navRow("projects", `Projekte & gespeicherte Berechnungen${nSaved ? ` (${nSaved})` : ""}`, N, svgIcon("projects"))]),
     ...GROUPS.flatMap(([title, keys]) => section(title, keys.map(nav))),
     ...section("", [navRow("install", "App installieren (iPhone, iPad, Mac)", N, svgIcon("install")), navRow("settings", "Einstellungen & Lizenzen", N, svgIcon("settings"))]),
-    h("div", { class: "credit" }, "Built by Lukas Kopp"),
+    h("div", { class: "credit" }, "Built by R. U. Sirius?"),
   ];
 }
 
@@ -81,7 +81,7 @@ function settingsView() {
     ...section("Haftungshinweis", [h("div", { class: "row" }, h("span", { class: "hint" }, LEGAL))]),
     ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
       "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
-    ...section("", [resultRow("Version", "1.3.1 (Web)"), resultRow("Entwickelt von", "Lukas Kopp"), resultRow("Lizenz", "MIT")]),
+    ...section("", [resultRow("Version", "1.3.2 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
   ];
 }
 
@@ -110,7 +110,7 @@ function route() {
   view.replaceChildren(...nodes);
   setPreset(null);
   if (isTool && !NO_SAVEBAR.has(key)) {
-    view.append(saveBar(key, title, view), h("div", { class: "print-only" }, `MatheRechner – Built by Lukas Kopp · ${LEGAL}`));
+    view.append(saveBar(key, title, view), h("div", { class: "print-only" }, `MatheRechner – Built by R. U. Sirius? · ${LEGAL}`));
   }
   window.scrollTo(0, 0);
 }
