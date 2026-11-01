@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.7.0)
+## Funktionen (v1.8.0)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
@@ -31,6 +31,10 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
 - **Schulrechner-Ansicht:** Gehäuse mit LCD, natürliche Darstellung wie im Lehrbuch (Brüche, Wurzeln, Potenzen, ∫, d/dx, Σ schon bei der Eingabe),
   SHIFT-/ALPHA-Ebene, Variablen A–F/X/Y/M mit STO/RCL, M+/M−, Ans, S⇔D, ENG/←ENG, °′″, hyp, Verlauf ▲▼,
   MENU (Moduswechsel) und SETUP (Deg/Rad, exakt/dezimal, Norm/Fix/Sci); bedienbar auch über die Computertastatur
+- **Felder von Vorlagen:** ▲/▼ springen zur oberen/unteren Grenze von ∫, Σ, Π bzw. zwischen Zähler und Nenner; Grenzen und Felder lassen sich im Display auch antippen.
+  Der Verlauf (▲) kommt nur bei leerer Eingabe oder nach einem Ergebnis
+- **Konstanten (SHIFT + 7, CONST):** Liste im Display mit Symbol, Wert und SI-Einheit, Auswahl mit ▲▼ und = oder zweistelliger Nummer (01–20), auch in den Display-Modi;
+  Konstanten rechnen als reine Zahlen in SI-Einheiten (z. B. 2·qₑ, c₀²), Werte aus math.js
 - **Eingabe wie beim Schulrechner:** nCr, nPr und ÷R zwischen zwei Zahlen (5 nCr 2, auch mit Ans und Klammerausdrücken); log▢ mit Basis zuerst (log₂(8));
   DEL in einer Vorlage entfernt die Vorlage und behält den Inhalt (Bruch → a/b); leere Operanden werden als □ angezeigt; Zahl direkt nach einer Klammer wird multipliziert (10²5 = 500);
   Rundungsreste werden als Bruch erkannt (sin 30° = ½, 0,1 + 0,2 = 3/10); negative Ergebnisse mit echtem Minuszeichen (−¼)

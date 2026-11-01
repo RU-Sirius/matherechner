@@ -74,6 +74,7 @@ function engine(deg, exact) {
       divR: (a, b) => { const A = n(a), B = n(b); if (!Number.isInteger(A) || !Number.isInteger(B) || B === 0) throw new Error("Math ERROR"); const q = Math.trunc(A / B); return [q, A - q * B]; },
       mixed: (w, num, den) => (n(w) < 0 ? e.subtract(w, e.divide(num, den)) : e.add(w, e.divide(num, den))),
       GCD: (a, b) => e.gcd(a, b), LCM: (a, b) => e.lcm(a, b),
+      ...Object.fromEntries(CONSTANTS.map(([k]) => [`K_${k}`, constValue(k)])), // Konstanten als reine Zahlen
       // log mit Basis zuerst (Eingabereihenfolge wie im Display: log_b(x)); glatte Ergebnisse exakt
       logab: (b, x) => { const B = n(b), X = n(x); if (!(B > 0) || B === 1 || !(X > 0)) throw new Error("Math ERROR"); const r = Math.log(X) / Math.log(B), R = Math.round(r); return B ** R === X ? R : r; },
     }, { override: true });
@@ -160,6 +161,7 @@ export function evaluate(src, { deg = false, scope = {} } = {}) {
   if (!exact && typeof dec === "number" && !Number.isInteger(dec)) { const f = rationalApprox(dec); if (f && Number(f.d) > 1) { exact = fracStr(f); mixed = mixedStr(f); } }
   if (!exact && typeof dec === "number") exact = exactForm(dec);
   if (exact === decimal) exact = null;
+  if (/K_/.test(expr)) { exact = null; mixed = null; } // mit Naturkonstanten dezimal anzeigen
   if (typeof dec === "number" || math.isComplex(dec)) scope.Ans = dec;
   return { value: dec, decimal, exact, mixed, isComplex: math.isComplex(dec) };
 }
@@ -511,14 +513,17 @@ export const UNIT_GROUPS = {
 // Ergänzte, exakt definierte Einheiten: internationale Seemeile (1852 m) und Knoten (1 sm/h).
 for (const [name, def] of [["nmi", "1852 m"], ["kn", "1852 m/h"]]) { try { math.createUnit(name, def); } catch { /* bereits vorhanden */ } }
 export function convertUnit(value, from, to) { return math.unit(value, from).toNumber(to); }
+// [math.js-Name, Bezeichnung, Symbol im Display] – Zahlenwerte aus math.js (SI), im Rechner als reine Zahlen K_<Name>
 export const CONSTANTS = [
-  ["speedOfLight", "Lichtgeschwindigkeit c"], ["gravitationConstant", "Gravitationskonstante G"], ["gravity", "Normfallbeschleunigung g"],
-  ["planckConstant", "Planck-Konstante h"], ["reducedPlanckConstant", "Reduzierte Planck-Konstante ħ"], ["elementaryCharge", "Elementarladung e"],
-  ["electronMass", "Elektronenmasse"], ["protonMass", "Protonenmasse"], ["neutronMass", "Neutronenmasse"], ["atomicMass", "Atomare Masseneinheit u"],
-  ["avogadro", "Avogadro-Konstante"], ["boltzmann", "Boltzmann-Konstante k"], ["gasConstant", "Universelle Gaskonstante R"], ["faraday", "Faraday-Konstante"],
-  ["electricConstant", "Elektrische Feldkonstante ε₀"], ["magneticConstant", "Magnetische Feldkonstante μ₀"], ["stefanBoltzmann", "Stefan-Boltzmann-Konstante σ"],
-  ["rydberg", "Rydberg-Konstante"], ["bohrRadius", "Bohrscher Radius"], ["molarVolume", "Molares Volumen (ideales Gas)"],
+  ["speedOfLight", "Lichtgeschwindigkeit c", "c₀"], ["gravitationConstant", "Gravitationskonstante G", "G"], ["gravity", "Normfallbeschleunigung g", "gₙ"],
+  ["planckConstant", "Planck-Konstante h", "h"], ["reducedPlanckConstant", "Reduzierte Planck-Konstante ħ", "ħ"], ["elementaryCharge", "Elementarladung e", "qₑ"],
+  ["electronMass", "Elektronenmasse", "mₑ"], ["protonMass", "Protonenmasse", "mₚ"], ["neutronMass", "Neutronenmasse", "mₙ"], ["atomicMass", "Atomare Masseneinheit u", "u"],
+  ["avogadro", "Avogadro-Konstante", "N_A"], ["boltzmann", "Boltzmann-Konstante k", "k_B"], ["gasConstant", "Universelle Gaskonstante R", "R"], ["faraday", "Faraday-Konstante", "F"],
+  ["electricConstant", "Elektrische Feldkonstante ε₀", "ε₀"], ["magneticConstant", "Magnetische Feldkonstante μ₀", "μ₀"], ["stefanBoltzmann", "Stefan-Boltzmann-Konstante σ", "σ"],
+  ["rydberg", "Rydberg-Konstante", "R∞"], ["bohrRadius", "Bohrscher Radius", "a₀"], ["molarVolume", "Molares Volumen (ideales Gas)", "Vₘ"],
 ];
+export const constValue = (key) => math[key].value;          // Zahlenwert in SI-Basiseinheiten
+export const constUnit = (key) => math[key].formatUnits();    // zugehörige SI-Einheit
 
 // ---------- Komplexe Zahlen ----------
 // Darstellung einer komplexen Zahl kartesisch und polar (Winkel in Grad oder Bogenmaß).

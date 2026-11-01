@@ -25,9 +25,9 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
   function valNode(v) {
     if (v === null || v === undefined || v === "") return span("la-dim", "0");
     if (typeof v === "string") { try { return natural(v); } catch { return span("nc", v); } }
-    if (typeof v === "number") { const ex = Number.isFinite(v) ? exactOf(v) : null; return ex ? exNode(ex) : span("nc", M.num(v, 10)); }
+    if (typeof v === "number") { const ex = Number.isFinite(v) ? exactOf(v) : null; return ex ? exNode(ex) : span("nc", M.num(v, 10).replace(/-/g, "−")); }
     if (math.isFraction(v)) return exNode(M.fracStr(v));
-    if (math.isComplex(v)) return span("nc", M.num(v, 10));
+    if (math.isComplex(v)) return span("nc", M.num(v, 10).replace(/-/g, "−"));
     return span("nc", String(v));
   }
 

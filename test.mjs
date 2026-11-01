@@ -138,3 +138,16 @@ console.log("Komplexe Zahlen ok.");
   assert.throws(() => ev("logab(1,5)"));
   console.log("Schulrechner-Feinschliff ok.");
 }
+{
+  const FX = await import("./fx.js"), M3 = await import("./mx.js");
+  const t = "integral(x^2,,)";                       // Schreibmarke im Integranden (Pos. 12)
+  assert.equal(FX.fieldTarget(t, 12, -1), 14);       // ▲ → obere Grenze
+  assert.equal(FX.fieldTarget(t, 12, 1), 13);        // ▼ → untere Grenze
+  assert.equal(FX.fieldTarget("(3)/(4)", 2, 1), 6);  // ▼ Zähler → Nenner
+  assert.equal(FX.fieldTarget("(3)/(4)", 6, -1), 2); // ▲ Nenner → Zähler
+  assert.equal(FX.fieldTarget("2+3", 3, -1), null);  // keine Vorlage → nichts
+  assert.equal(FX.fieldTarget("sqrt(integral(x,0,1))", 15, -1), 19); // verschachtelt
+  assert.equal(FX.fieldPos("integral(x,1,2)+integral(y,,)", "integral", 1, 2), 28);
+  assert.equal(M3.evaluate("K_speedOfLight").value, 299792458); assert.equal(M3.evaluate("2K_gravity").exact, null);
+  console.log("Grenzen/Konstanten ok.");
+}

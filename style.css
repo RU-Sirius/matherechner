@@ -255,3 +255,12 @@ body.calc-home main { padding-bottom: 0; }
 .fx .scr-lbl { font-size: clamp(8.5px, calc(var(--fxh, 700px) * .015), 10.5px); line-height: 1.1; }
 .fx .scr-nr { font-size: clamp(8px, calc(var(--fxh, 700px) * .014), 10px); margin: -2px 0 calc(-1 * clamp(5px, calc(var(--fxh, 700px) * .012), 2px)) 1px; }
 .fx .lcd-screen { padding-bottom: 2px; }
+/* ---------- Konstanten (CONST) im Display ---------- */
+.lcd-in [data-fn] { cursor: pointer; }
+.nconst { font-style: italic; }
+.scr-hint { font-size: 10px; opacity: .7; margin-left: auto; white-space: nowrap; }
+.const-list { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.const-row { display: grid; grid-template-columns: 1.7em 2.4em 1fr auto; gap: 4px; align-items: baseline; padding: 3px 4px; font-size: clamp(10px, calc(var(--fxh, 700px) * .017), 13px); border-bottom: 1px dotted rgba(29,35,32,.25); }
+.const-row.sel { background: #1d2320; color: #c3cdbd; }
+.const-nr { font-weight: 700; } .const-sym { font: italic 1.1em "Times New Roman", Georgia, serif; }
+.const-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .const-val { text-align: right; white-space: nowrap; font-size: .92em; }

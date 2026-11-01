@@ -20,6 +20,10 @@ const paren = (a) => span("np", "(", a, ")");
 const FN = { asin: "sin⁻¹", acos: "cos⁻¹", atan: "tan⁻¹", log10: "log", sinh: "sinh", cosh: "cosh", tanh: "tanh", asinh: "sinh⁻¹", acosh: "cosh⁻¹", atanh: "tanh⁻¹" };
 const PREC = { add: 1, subtract: 1, multiply: 2, divide: 2, unaryMinus: 3, pow: 4, factorial: 5 };
 
+const CONST_SYM = Object.fromEntries(M.CONSTANTS.map(([k, , sym]) => [`K_${k}`, sym]));
+// Felder von Vorlagen markieren, damit man sie im Display antippen kann (n-te Vorlage dieses Namens, Argument-Nr.)
+let occ = {};
+const fld = (el, fn, k, arg) => { el.dataset.fn = fn; el.dataset.occ = k; el.dataset.arg = arg; return el; };
 function render(node) {
   const n = node;
   if (n.isParenthesisNode) return paren(render(n.content));
@@ -28,6 +32,7 @@ function render(node) {
     if (n.name === CUR) return span("caret", "");
     if (n.name.includes(CUR)) { const [l, r] = n.name.split(CUR); return span("nm", l, span("caret", ""), r); } // Schreibmarke an einem Namen
     if (n.name === BOX) return span("box", "");
+    if (CONST_SYM[n.name]) return span("nv nconst", CONST_SYM[n.name]);
     return span(n.name.length === 1 && /[a-zA-Z]/.test(n.name) ? "nv" : "nc", { pi: "π", Infinity: "∞", Ans: "Ans" }[n.name] ?? n.name);
   }
   if (n.isOperatorNode) {
@@ -59,14 +64,15 @@ function render(node) {
     if (name === "abs") return span("nm", "|", r(0), "|");
     if (name === "exp") return span("npw", "e", sup(r(0)));
     if (name === "log" && a.length === 2) return span("nm", "log", sub(r(1)), paren(r(0)));
-    if (name === "logab") return span("nm", "log", sub(r(0)), paren(a[1] ? r(1) : ""));
-    if (name === "integral") return span("nint", span("nis", "∫"), span("nil", span("nih", a[2] ? r(2) : ""), span("nil2", a[1] ? r(1) : "")), r(0), span("nop", "dx"));
-    if (name === "ddx") return span("nm", frac("d", "dx"), paren(r(0)), span("nbar", sub(span("nm", "x=", a[1] ? r(1) : ""))));
-    if (name === "sigma") return span("nint", span("nsig", span("nih", a[2] ? r(2) : ""), span("nsigs", "Σ"), span("nil2", span("nm", "x=", a[1] ? r(1) : ""))), paren(r(0)));
+    const k = (occ[name] = (occ[name] ?? -1) + 1); // Reihenfolge = Reihenfolge im Text
+    if (name === "logab") return span("nm", "log", fld(sub(r(0)), name, k, 0), fld(paren(a[1] ? r(1) : ""), name, k, 1));
+    if (name === "integral") return span("nint", span("nis", "∫"), span("nil", fld(span("nih", a[2] ? r(2) : ""), name, k, 2), fld(span("nil2", a[1] ? r(1) : ""), name, k, 1)), fld(span("nm", r(0)), name, k, 0), span("nop", "dx"));
+    if (name === "ddx") return span("nm", frac("d", "dx"), fld(paren(r(0)), name, k, 0), span("nbar", sub(fld(span("nm", "x=", a[1] ? r(1) : ""), name, k, 1))));
+    if (name === "sigma") return span("nint", span("nsig", fld(span("nih", a[2] ? r(2) : ""), name, k, 2), span("nsigs", "Σ"), fld(span("nil2", span("nm", "x=", a[1] ? r(1) : "")), name, k, 1)), fld(paren(r(0)), name, k, 0));
     if (name === "nCr" || name === "nPr" || name === "divR") { const k = (i) => (a[i] ? (a[i].isOperatorNode ? paren(render(a[i])) : render(a[i])) : ""); // (2+3) C 2 mit Klammer
       return span("nm", k(0), name === "divR" ? span("nop", "÷R") : span("ncr", name[1]), k(1)); }
     if (name === "mixed") return span("nm", r(0), frac(r(1), r(2)));
-    if (name === "product") return span("nint", span("nsig", span("nih", a[2] ? r(2) : ""), span("nsigs", "Π"), span("nil2", span("nm", "x=", a[1] ? r(1) : ""))), paren(r(0)));
+    if (name === "product") return span("nint", span("nsig", fld(span("nih", a[2] ? r(2) : ""), name, k, 2), span("nsigs", "Π"), fld(span("nil2", span("nm", "x=", a[1] ? r(1) : "")), name, k, 1)), fld(paren(r(0)), name, k, 0));
     if (name === "random") return span("nm", span("nc", "Ran#"), ...(a.some((x) => x.toString().includes(CUR)) ? [span("caret", "")] : []));
     return span("nm", span("nfn", FN[name] ?? name), paren(span("nm", ...a.flatMap((x, i) => (i ? [", ", render(strip(x))] : [render(strip(x))])))));
   }
@@ -89,6 +95,7 @@ export function previewNode(text, cursor) {
   return math.parse(t);
 }
 export function natural(text, cursor = null) {
+  occ = {};
   if (text.includes("∠")) { // Polarform im Display unverändert zeigen
     const t = cursor === null ? text : text.slice(0, cursor) + "\u0000" + text.slice(cursor);
     return span("nm", ...t.split("\u0000").flatMap((part, i) => (i ? [span("caret", ""), part] : [part])));
@@ -98,6 +105,45 @@ export function natural(text, cursor = null) {
     if (cursor === null) return span("nc", text);
     return span("nm", text.slice(0, cursor), span("caret", ""), text.slice(cursor));
   }
+}
+// ---------- Felder von Vorlagen (für ▲▼ und Antippen) ----------
+// Innerste Klammer bzw. Funktion um die Position: Name, Argumentgrenzen, Argument der Schreibmarke
+export function enclosingCall(text, cur) {
+  let d = 0;
+  for (let i = cur - 1; i >= 0; i--) {
+    const ch = text[i];
+    if (ch === ")") d++;
+    else if (ch === "(" && d-- === 0) {
+      let s = i; while (s > 0 && /[A-Za-z_]/.test(text[s - 1])) s--;
+      const args = []; let st = i + 1, dd = 0;
+      for (let j = i + 1; ; j++) {
+        const c = text[j];
+        if (j >= text.length || (c === ")" && dd === 0)) { args.push({ start: st, end: j }); break; }
+        if (c === "(") dd++; else if (c === ")") dd--; else if (c === "," && dd === 0) { args.push({ start: st, end: j }); st = j + 1; }
+      }
+      return { name: text.slice(s, i), nameStart: s, open: i, close: args.at(-1).end, args, argIdx: args.findIndex((a) => cur >= a.start && cur <= a.end) };
+    }
+  }
+  return null;
+}
+// ▲ (dir = −1) / ▼ (dir = +1): obere/untere Grenze von ∫, Σ, Π; Zähler/Nenner eines Bruchs; Zähler/Nenner einer gemischten Zahl
+export function fieldTarget(text, cur, dir) {
+  for (let c = enclosingCall(text, cur); c; c = c.nameStart > 0 ? enclosingCall(text, c.nameStart) : null) {
+    const to = (k) => (c.args[k] && k !== c.argIdx ? c.args[k].end : null);
+    if (["integral", "sigma", "product"].includes(c.name)) { const t = to(dir < 0 ? 2 : 1); if (t !== null) return t; }
+    if (c.name === "mixed") { const t = to(dir < 0 ? 1 : 2); if (t !== null) return t; }
+    if (c.name === "") {
+      if (dir > 0 && text.startsWith(")/(", c.close)) { const den = enclosingCall(text, c.close + 3); if (den) return den.close; }
+      if (dir < 0 && text.slice(c.open - 2, c.open) === ")/") { const num = enclosingCall(text, c.open - 2); if (num) return num.close; }
+    }
+  }
+  return null;
+}
+// Antippen: n-te Vorlage „name(“ im Text, Argument arg → Position am Ende dieses Feldes
+export function fieldPos(text, name, n, arg) {
+  const re = new RegExp(`(^|[^A-Za-z_])${name}\\(`, "g"); let m, k = -1;
+  while ((m = re.exec(text))) if (++k === Number(n)) { const c = enclosingCall(text, m.index + m[0].length); return c?.args[arg]?.end ?? null; }
+  return null;
 }
 // Ergebnisdarstellung (exakte Form → natürliche Darstellung)
 function exactNode(str) {
@@ -140,6 +186,14 @@ export function schoolCalc(menuItems = []) {
 
   const status = h("div", { class: "lcd-status" }), inLine = h("div", { class: "lcd-in" }), outLine = h("div", { class: "lcd-out" });
   const lcd = h("div", { class: "lcd" }, status, inLine, outLine);
+  // Feld im Display antippen (z. B. obere/untere Integralgrenze) → Schreibmarke dorthin; sonst ans Ende
+  inLine.addEventListener("click", (e) => {
+    if (mode !== "comp" || !text) return;
+    const f = e.target.closest("[data-fn]");
+    const pos = f ? fieldPos(text, f.dataset.fn, f.dataset.occ, Number(f.dataset.arg)) : null;
+    if (done) { done = false; res = null; }
+    cur = pos ?? text.length; hIdx = null; paint();
+  });
 
   function paint() {
     status.replaceChildren(...[shift && "S", alpha && "A", sto && "STO", rcl && "RCL", vars.M ? "M" : "", cm.cmplx && "CMPLX", cm.base !== 10 && BASE_NAME[cm.base], cfg.deg ? "D" : "R",
@@ -254,6 +308,7 @@ export function schoolCalc(menuItems = []) {
   }
   function histMove(d) {
     if (mode !== "comp") return fieldOp(d < 0 ? "up" : "down");
+    if (!done && text) { const t = fieldTarget(text, cur, d); if (t !== null) { cur = t; hIdx = null; paint(); } return; } // in Vorlagen: Feld wechseln
     if (!hist.length) return;
     hIdx = hIdx === null ? (d < 0 ? hist.length - 1 : null) : hIdx + d;
     if (hIdx === null || hIdx < 0 || hIdx >= hist.length) { hIdx = hIdx < 0 ? 0 : null; if (hIdx === null) return; }
@@ -280,6 +335,7 @@ export function schoolCalc(menuItems = []) {
   app.setMenuRenderer(() => showMenu());
   // Tasten im Modus-Bildschirm: Eingabe, Cursor, DEL, AC, =, OPTN an den Modus weiterreichen
   function fieldOp(op, t) {
+    if (mode === "const") return constKey(op, t);
     if (mode === "menu") { if (op === "ac") showComp(); else if (op === "insert") { const i = menuIndex(t); if (i !== null) pickTile(i + 1); } return; }
     app.key({ insert: "ins", del: "del", ac: "ac", left: "left", right: "right", next: "exe", prev: "up", down: "down", optn: "optn" }[op] ?? op, t);
   }
@@ -298,6 +354,38 @@ export function schoolCalc(menuItems = []) {
     const key = app.modes[i][0];
     if (key === "calc" || key === "complex") return app.open(i);
     mode = "app"; screen.hidden = true; lcd.hidden = true; app.el.hidden = false; app.open(i);
+  }
+  // ---------- CONST: Konstanten im Display wählen (▲▼ oder zweistellige Nummer, = einfügen, AC zurück) ----------
+  let constSel = 0, constPrev = "comp", constCode = "";
+  const supTxt = (s) => String(s).replace(/[-0-9]/g, (c) => "⁻⁰¹²³⁴⁵⁶⁷⁸⁹"["-0123456789".indexOf(c)]);
+  const sci = (v) => { const a = Math.abs(v); if (a >= 1e-3 && a < 1e6) return M.num(v, 10).replace(".", ","); const [m, e] = v.toExponential(9).split("e"); return `${String(+m).replace(".", ",")}×10${supTxt(Number(e))}`; };
+  // „m^3 / (kg s^2)“ → „m³/(kg·s²)“
+  const unitTxt = (u) => u.replace(/\^(?:\((-?\d+)\)|(-?\d+))/g, (_, a, b) => supTxt(a ?? b)).replace(/ \/ /g, "/").replace(/ /g, "·");
+  function showConst() {
+    constPrev = mode === "app" ? "app" : "comp"; mode = "const"; constCode = "";
+    lcd.hidden = true; app.el.hidden = true; screen.hidden = false; renderConst();
+  }
+  function renderConst() {
+    scrHead.replaceChildren(span("scr-title", `CONST${constCode ? " " + constCode + "_" : ""}`), span("scr-hint", "▲▼ / Nr. · = einfügen · AC zurück"));
+    const list = h("div", { class: "const-list" }, ...M.CONSTANTS.map(([k, lbl, sym], i) => h("div", { class: "const-row" + (i === constSel ? " sel" : ""), onclick: () => { constSel = i; pickConst(); } },
+      span("const-nr", String(i + 1).padStart(2, "0")), span("const-sym", sym), span("const-lbl", lbl.replace(/ \S+$/, (w) => (w.trim() === sym || w.trim().length <= 2 ? "" : w))),
+      span("const-val", `${sci(M.constValue(k))} ${unitTxt(M.constUnit(k))}`))));
+    scrBody.replaceChildren(list);
+    const row = list.children[constSel]; if (row) { const top = row.offsetTop - list.offsetTop; if (top < scrBody.scrollTop) scrBody.scrollTop = top; else if (top + row.offsetHeight > scrBody.scrollTop + scrBody.clientHeight) scrBody.scrollTop = top + row.offsetHeight - scrBody.clientHeight; }
+  }
+  function leaveConst() { if (constPrev === "app") { mode = "app"; screen.hidden = true; app.el.hidden = false; } else showComp(); }
+  function pickConst() { const k = `K_${M.CONSTANTS[constSel][0]}`; leaveConst(); if (mode === "app") app.key("ins", k); else insert(k); }
+  function constKey(op, t) {
+    const n = M.CONSTANTS.length;
+    if (op === "up" || op === "down") { constSel = (constSel + (op === "up" ? -1 : 1) + n) % n; constCode = ""; return renderConst(); }
+    if (op === "next") return pickConst();
+    if (op === "ac") return leaveConst();
+    if (op === "del") { constCode = constCode.slice(0, -1); return renderConst(); }
+    if (op === "insert" && /^\d$/.test(t)) {
+      constCode += t;
+      if (constCode.length === 2) { const i = Number(constCode) - 1; constCode = ""; if (i >= 0 && i < n) { constSel = i; return pickConst(); } }
+      return renderConst();
+    }
   }
   function pickTile(k) { if (k <= app.modes.length) openMode(k - 1); }
   // Basis-N: Zahlen in der gewählten Basis eingeben, ganzzahlig rechnen
@@ -361,7 +449,7 @@ export function schoolCalc(menuItems = []) {
     ["Abs – Betrag", I("abs(")], ["arg – Argument", I("arg(")], ["Konjugiert", I("conj(")]]) : overlay("OPTN", [["sinh", I("sinh(")], ["cosh", I("cosh(")], ["tanh", I("tanh(")], ["sinh⁻¹", I("asinh(")], ["cosh⁻¹", I("acosh(")], ["tanh⁻¹", I("atanh(")],
     ["Rnd – auf Anzeigegenauigkeit runden", () => insert(cfg.fmt === "fix" ? `RndFix(,${cfg.digits})` : "Rnd(")], ["Int – ganzzahliger Teil", I("Int(")], ["Intg – größte ganze Zahl ≤ x", I("Intg(")],
     ["∠ – Polarform r∠φ (z. B. 5∠30)", I("∠")], ["Abs – Betrag", I("abs(")], ["Re – Realteil", I("re(")], ["Im – Imaginärteil", I("im(")], ["arg – Argument", I("arg(")], ["Konjugiert", I("conj(")], ["Π – Produkt", I("product(,,)")]]);
-  const openConst = () => overlay("CONST – Konstanten", M.CONSTANTS.map(([key, label]) => [label, I(key)]));
+  const openConst = () => showConst();
   const openConv = () => overlay("CONV – Einheit umrechnen (Wert vorher eingeben)", Object.entries(M.UNIT_GROUPS).flatMap(([g, us]) =>
     us.flatMap((u) => us.filter((v) => v !== u).map((v) => [`${g}: ${u} → ${v}`, I(` ${u} to ${v}`)]))).slice(0, 400));
   const openReset = () => overlay("RESET", [["Einstellungen zurücksetzen", () => { Object.assign(cfg, { deg: true, exact: true, fmt: "norm", digits: 4 }); showExact = true; save(); paint(); }],
