@@ -171,6 +171,7 @@ export function schoolCalc(menuItems = []) {
   function ac() { text = ""; cur = 0; res = null; done = false; engOn = false; showDms = false; hIdx = null; paint(); }
   function exe() {
     if (!text.trim()) return;
+    text = M.autoClose(text); // auch in der Anzeige ergänzen
     try {
       const r = M.evaluate(text, { deg: cfg.deg, scope: vars }); // Zuweisungen (A = 5) landen direkt in vars
       res = r; showExact = cfg.exact; engOn = false; engShift = 0; showDms = false;

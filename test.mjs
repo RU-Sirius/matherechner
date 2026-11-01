@@ -79,3 +79,7 @@ rr = M.evaluate("ddx(sin(x), 0)", { deg: false }); near(Number(rr.value), 1, 1e-
 rr = M.evaluate("ddx(sin(x), 0)", { deg: true }); near(Number(rr.value), Math.PI / 180, 1e-12);
 rr = M.evaluate("ddx(e^x, 1)"); near(Number(rr.value), Math.E, 1e-9);
 console.log("∫/ddx/Σ ok.");
+// Fehlende Klammern werden ergänzt
+assert.equal(M.autoClose("cos(20"), "cos(20)"); assert.equal(M.autoClose("sqrt(2*(3+1"), "sqrt(2*(3+1))");
+assert.equal(M.evaluate("cos(60", { deg: true }).decimal, "0.5"); assert.equal(M.evaluate("2*(3+4").decimal, "14");
+console.log("Klammerergänzung ok.");

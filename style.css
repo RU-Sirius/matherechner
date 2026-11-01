@@ -151,3 +151,4 @@ button.action { width: 100%; border: 0; background: none; font: inherit; color: 
 .fx-menu { max-height: 80vh; overflow-y: auto; }
 .fx-menu-item { display: block; width: 100%; text-align: left; border: 0; border-bottom: .5px solid var(--sep); background: none; color: var(--text); font: 16px -apple-system, sans-serif; padding: 11px 4px; }
 .fx-menu-close { color: var(--accent); text-align: center; border: 0; margin-top: 6px; }
+.fx { margin-top: 8px; }

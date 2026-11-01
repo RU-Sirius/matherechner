@@ -13,9 +13,10 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.1.0)
+## Funktionen (v1.1.1)
 
 **Rechnen**
+- **Taschenrechner mit Umschalter „Standard | Schulrechner“** (Wahl wird gespeichert); fehlende schließende Klammern werden am Ende automatisch ergänzt
 - **Schulrechner-Ansicht:** Gehäuse mit LCD, natürliche Darstellung wie im Lehrbuch (Brüche, Wurzeln, Potenzen, ∫, d/dx, Σ schon bei der Eingabe),
   SHIFT-/ALPHA-Ebene, Variablen A–F/X/Y/M mit STO/RCL, M+/M−, Ans, S⇔D, ENG/←ENG, °′″, hyp, Verlauf ▲▼,
   MENU (Moduswechsel) und SETUP (Deg/Rad, exakt/dezimal, Norm/Fix/Sci); bedienbar auch über die Computertastatur

@@ -1,6 +1,7 @@
 // Taschenrechner, Gleichungen, Analysis
 import * as M from "./mx.js";
 import { calcView, section, segmented, selectRow, resultRow, msgRow, h, inputRow } from "./ui.js";
+import { schoolCalc } from "./fx.js";
 
 const r = (v, d = 10) => (typeof v === "number" ? M.num(v, d) : String(v));
 const ERR = (e) => {
@@ -11,6 +12,20 @@ const ERR = (e) => {
 };
 
 // =================== Taschenrechner ===================
+// Ein Eintrag, zwei Ansichten: Standard (Eingabezeile + Tastenfeld) oder Schulrechner (Gehäuse, Lehrbuch-Darstellung).
+const MODE_KEY = "mx:calcMode";
+export function calculatorSwitch(menuItems, forceMode = null) {
+  if (forceMode) localStorage.setItem(MODE_KEY, forceMode);
+  const mode = localStorage.getItem(MODE_KEY) || "school";
+  const box = h("div");
+  const render = (m) => {
+    localStorage.setItem(MODE_KEY, m);
+    box.replaceChildren(segmented([["standard", "Standard"], ["school", "Schulrechner"]], m, render),
+      ...(m === "school" ? [schoolCalc(menuItems)] : calculator()));
+  };
+  render(mode);
+  return [box];
+}
 const HKEY = "mx:history", SKEY = "mx:calc";
 export function calculator() {
   const cfg = JSON.parse(localStorage.getItem(SKEY) || "null") ?? { deg: true, showExact: true, keypad: true };

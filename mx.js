@@ -108,8 +108,15 @@ export function exactForm(x) {
  * Wertet einen Ausdruck aus. scope wird verändert (Zuweisungen, Ans).
  * Ergebnis: { value, decimal, exact (Bruch/Wurzel/π), mixed, isComplex, text }
  */
+// Fehlende schließende Klammern am Ende ergänzen – wie bei Schulrechnern üblich: "cos(20" → "cos(20)".
+export function autoClose(src) {
+  let depth = 0;
+  for (const ch of String(src)) { if (ch === "(") depth++; else if (ch === ")") depth = Math.max(0, depth - 1); }
+  return String(src) + ")".repeat(depth);
+}
+
 export function evaluate(src, { deg = false, scope = {} } = {}) {
-  const expr = normalize(src).trim();
+  const expr = autoClose(normalize(src).trim());
   if (!expr) fail("empty");
   const dec = engine(deg, false).evaluate(expr, scope);
   let exact = null, mixed = null;
