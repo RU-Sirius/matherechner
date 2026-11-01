@@ -2,6 +2,7 @@ import { LEGAL, h, section, resultRow, navRow, clearCurrentState, setPreset } fr
 import * as V from "./views.js";
 import * as V2 from "./views2.js";
 import { graphView } from "./graph.js";
+import { schoolCalc } from "./fx.js";
 import { favorites, saveBar, projectsView, reportView, saves } from "./projects.js";
 import { installView } from "./install.js";
 import { svgIcon } from "./icons.js";
@@ -16,6 +17,7 @@ const favBtn = document.getElementById("fav");
 // Alle Werkzeuge: Schlüssel → [Listenname, Kurztitel, Farbe, Ansicht]
 const G = "#30a46c", B = "#0a84ff", O = "#ff9500", R = "#ff3b30", P = "#af52de", T = "#30b0c7", N = "#8e8e93";
 const TOOLS = {
+  fx: ["Schulrechner-Ansicht (natürliche Darstellung)", "Schulrechner", G, () => [schoolCalc(MENU_ITEMS())]],
   calc: ["Taschenrechner (exakt, Brüche, Wurzeln, π)", "Taschenrechner", G, V.calculator],
   graph: ["Funktionsplotter mit Schiebereglern", "Funktionsplotter", B, graphView],
   poly: ["Polynomgleichungen (Grad 2–6)", "Polynomgleichung", O, V.polynomial],
@@ -39,9 +41,11 @@ const TOOLS = {
   units: ["Einheiten umrechnen", "Einheiten", N, V2.unitsView],
   constants: ["Physikalische Konstanten", "Konstanten", N, V2.constants],
 };
+// Modi für die MENU-Taste der Schulrechner-Ansicht
+const MENU_ITEMS = () => Object.entries(TOOLS).filter(([k]) => k !== "fx").map(([k, t]) => [k, t[0]]);
 const nav = (key) => navRow(key, TOOLS[key][0], TOOLS[key][2], svgIcon(key));
 const GROUPS = [
-  ["Rechnen", ["calc", "numtheory", "bases", "complex"]],
+  ["Rechnen", ["fx", "calc", "numtheory", "bases", "complex"]],
   ["Grafik", ["graph"]],
   ["Gleichungen", ["poly", "ineq", "linsys", "solver"]],
   ["Analysis", ["deriv", "integral", "curve", "sum", "table"]],
@@ -67,13 +71,13 @@ function settingsView() {
     ...section("Haftungshinweis", [h("div", { class: "row" }, h("span", { class: "hint" }, LEGAL))]),
     ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
       "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
-    ...section("", [resultRow("Version", "1.0.0 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
+    ...section("", [resultRow("Version", "1.1.0 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
   ];
 }
 
 // ---------- Routing ----------
 const PAGES = { settings: ["Einstellungen", settingsView], projects: ["Projekte", projectsView], install: ["App installieren", installView] };
-const NO_SAVEBAR = new Set(["calc", "constants"]);
+const NO_SAVEBAR = new Set(["fx", "calc", "constants"]);
 function route() {
   const [key, arg] = location.hash.slice(1).split("/");
   clearCurrentState();

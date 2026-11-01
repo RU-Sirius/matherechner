@@ -41,6 +41,19 @@ function engine(deg, exact) {
       nCr: (n, k) => e.combinations(n, k), nPr: (n, k) => e.permutations(n, k),
       ln: (x) => e.log(x), lg: (x) => e.log10(x), root: (x, n) => e.nthRoot(x, n),
     }, { override: true });
+    // ∫, d/dx und Σ im Ausdruck: integral(f, a, b), ddx(f, x0), sigma(f, a, b) – Variable jeweils x.
+    const plain = (scope) => { const o = {}; if (scope?.keys) for (const k of scope.keys()) o[k] = scope.get(k); else Object.assign(o, scope); return o; };
+    const asNum = (v) => Number(e.isFraction?.(v) ? e.number(v) : v);
+    const fnOf = (node, scope) => { const code = node.compile(), base = plain(scope); return (x) => asNum(code.evaluate({ ...base, x })); };
+    const integral = (args, _m, scope) => integrate(fnOf(args[0], scope), asNum(args[1].compile().evaluate(plain(scope))), asNum(args[2].compile().evaluate(plain(scope))));
+    // Numerische Ableitung (Richardson, Fehler ~h⁴) mit derselben Engine – berücksichtigt so auch DEG/RAD.
+    const ddx = (args, _m, scope) => {
+      const f = fnOf(args[0], scope), x = asNum(args[1].compile().evaluate(plain(scope))), hh = 1e-3 * Math.max(1, Math.abs(x));
+      return (8 * (f(x + hh) - f(x - hh)) - (f(x + 2 * hh) - f(x - 2 * hh))) / (12 * hh);
+    };
+    const sigma = (args, _m, scope) => sumProduct(fnOf(args[0], scope), asNum(args[1].compile().evaluate(plain(scope))), asNum(args[2].compile().evaluate(plain(scope))));
+    integral.rawArgs = true; ddx.rawArgs = true; sigma.rawArgs = true;
+    e.import({ integral, ddx, sigma }, { override: true });
     engines[key] = e;
   }
   return engines[key];

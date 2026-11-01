@@ -69,3 +69,13 @@ assert.deepEqual(M.polyRoots([1, -2, 1]).map((z) => z.re), [1, 1]);
 assert.deepEqual(M.polyRoots([1, -6, 12, -8]).map((z) => z.re), [2, 2, 2]);
 r = M.polyRoots([1, -5, 6, 4, -8]); assert.deepEqual(r.map((z) => z.re), [-1, 2, 2, 2]);
 console.log("Mehrfachnullstellen ok.");
+// ∫, d/dx, Σ im Ausdruck (Variable x; Referenz: exakt)
+let rr = M.evaluate("integral(x^2, 0, 3)"); near(Number(rr.value), 9, 1e-10);
+rr = M.evaluate("integral(sin(x), 0, pi)"); near(Number(rr.value), 2, 1e-10);
+rr = M.evaluate("ddx(x^3, 2)"); near(Number(rr.value), 12, 1e-9);
+rr = M.evaluate("sigma(x^2, 1, 10)"); assert.equal(rr.decimal, "385");
+const sc2 = {}; M.evaluate("A = 2", { scope: sc2 }); rr = M.evaluate("integral(A*x, 0, 1)", { scope: sc2 }); near(Number(rr.value), 1, 1e-10);
+rr = M.evaluate("ddx(sin(x), 0)", { deg: false }); near(Number(rr.value), 1, 1e-10);
+rr = M.evaluate("ddx(sin(x), 0)", { deg: true }); near(Number(rr.value), Math.PI / 180, 1e-12);
+rr = M.evaluate("ddx(e^x, 1)"); near(Number(rr.value), Math.E, 1e-9);
+console.log("∫/ddx/Σ ok.");
