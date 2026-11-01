@@ -3,6 +3,9 @@ import * as V from "./views.js";
 import * as V2 from "./views2.js";
 import { graphView } from "./graph.js";
 import { schoolCalc } from "./fx.js";
+import * as V3 from "./views3.js";
+import { createExtras } from "./extras.js";
+const X = createExtras("mathe");
 import { favorites, saveBar, projectsView, reportView, saves } from "./projects.js";
 import { installView } from "./install.js";
 import { svgIcon } from "./icons.js";
@@ -30,10 +33,13 @@ const TOOLS = {
   table: ["Wertetabelle", "Wertetabelle", R, V.tableView],
   matrix: ["Matrizen (det, Inverse, Rang, Eigenwerte)", "Matrizen", P, V2.matrix],
   vectors: ["Vektoren (2D/3D)", "Vektoren", P, V2.vectors],
+  geometry: ["Geraden & Ebenen (Lage, Schnitt, Abstand)", "Geraden & Ebenen", P, V3.geometry],
   stats: ["Statistik (1 Variable, Quartile)", "Statistik", T, V2.stats],
   regression: ["Regression (2 Variablen)", "Regression", T, V2.regressionView],
   distrib: ["Verteilungen (Normal, Binomial, Poisson)", "Verteilungen", T, V2.distributions],
   combi: ["Kombinatorik (nCr, nPr, n!)", "Kombinatorik", T, V2.combinatorics],
+  hypo: ["Signifikanztest (Binomialverteilung)", "Signifikanztest", T, V3.hypothesis],
+  tree: ["Baumdiagramm, Vierfeldertafel & Bayes", "Baumdiagramm", T, V3.treeView],
   numtheory: ["Teiler, Primfaktoren, ggT & kgV", "Zahlentheorie", G, V2.numberTheory],
   bases: ["Zahlensysteme (Bin, Okt, Dez, Hex)", "Zahlensysteme", G, V2.bases],
   complex: ["Komplexe Zahlen (kartesisch ↔ polar)", "Komplexe Zahlen", G, V2.complexView],
@@ -49,8 +55,8 @@ const GROUPS = [
   ["Grafik", ["graph"]],
   ["Gleichungen", ["poly", "ineq", "linsys", "solver"]],
   ["Analysis", ["deriv", "integral", "curve", "sum", "table"]],
-  ["Lineare Algebra", ["matrix", "vectors"]],
-  ["Statistik & Wahrscheinlichkeit", ["stats", "regression", "distrib", "combi"]],
+  ["Lineare Algebra", ["matrix", "vectors", "geometry"]],
+  ["Statistik & Wahrscheinlichkeit", ["stats", "regression", "distrib", "combi", "hypo", "tree"]],
   ["Nachschlagen", ["units", "constants"]],
 ];
 
@@ -70,24 +76,35 @@ function home() {
 function homeList() {
   const favs = favorites.list().filter((k) => k in TOOLS);
   const nSaved = saves.list().length;
-  return [
+  const rec = X.recent.list().filter((k) => k in TOOLS && !favs.includes(k)).slice(0, 4);
+  return X.withSearch([
     ...(favs.length ? section("★ Favoriten", favs.map(nav)) : []),
+    ...(rec.length ? section("Zuletzt verwendet", rec.map(nav)) : []),
     ...section("", [navRow("projects", `Projekte & gespeicherte Berechnungen${nSaved ? ` (${nSaved})` : ""}`, N, svgIcon("projects"))]),
     ...GROUPS.flatMap(([title, keys]) => section(title, keys.map(nav))),
     ...section("", [navRow("install", "App installieren (iPhone, iPad, Mac)", N, svgIcon("install")), navRow("settings", "Einstellungen & Lizenzen", N, svgIcon("settings"))]),
     h("div", { class: "credit" }, "Built by R. U. Sirius?"),
-  ];
+  ], { tools: TOOLS, groups: GROUPS, nav, extra: SEARCH_EXTRA });
 }
+// Zusätzliche Suchbegriffe (Synonyme)
+const SEARCH_EXTRA = { calc: "taschenrechner schulrechner casio", poly: "nullstellen quadratisch pq mitternachtsformel", linsys: "lgs gauss",
+  solver: "gleichung loesen", deriv: "ableiten differenzieren", integral: "integrieren flaeche", curve: "extrempunkte wendepunkte hochpunkt", matrix: "determinante inverse",
+  stats: "mittelwert median standardabweichung", regression: "ausgleichsgerade trend", distrib: "normalverteilung binomial poisson wahrscheinlichkeit", combi: "fakultaet binomialkoeffizient",
+  numtheory: "ggt kgv primzahl teiler", bases: "binaer hex dual", complex: "imaginaer", units: "umrechnen einheit",
+  geometry: "vektorgeometrie gerade ebene schnittpunkt abstand windschief normalenvektor koordinatenform analytische geometrie", hypo: "hypothesentest signifikanz ablehnungsbereich fehler",
+  tree: "bedingte wahrscheinlichkeit vierfeldertafel bayes", graph: "plotter funktion zeichnen graph parameterkurve polarkurve ableitung" };
 
 function settingsView() {
   const sv = localStorage.getItem(START_KEY) || "last";
   return [
     ...section("Startansicht", [segmented([["list", "Liste"], ["calc", "Rechner"], ["last", "Zuletzt"]], sv, (v) => { localStorage.setItem(START_KEY, v); if (v !== "last") localStorage.setItem(HOME_KEY, v); route(); })],
       "Legt fest, womit die App startet: Funktionsliste, Rechner-Ansicht oder die zuletzt verwendete Ansicht. Umschalten geht jederzeit oben auf der Startseite."),
+    ...X.backupSection(),
     ...section("Haftungshinweis", [h("div", { class: "row" }, h("span", { class: "hint" }, LEGAL))]),
+    ...X.appsSection(),
     ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
       "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
-    ...section("", [resultRow("Version", "1.5.1 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
+    ...section("", [resultRow("Version", "1.6.0 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
   ];
 }
 
@@ -99,7 +116,7 @@ function route() {
   if (key === "fx") { localStorage.setItem("mx:calcMode", "school"); key = "calc"; }
   clearCurrentState();
   let title, nodes, isTool = false;
-  if (key in TOOLS) { title = TOOLS[key][1]; nodes = TOOLS[key][3](); isTool = true; }
+  if (key in TOOLS) { title = TOOLS[key][1]; nodes = TOOLS[key][3](); isTool = true; X.recent.track(key); }
   else if (key in PAGES) { title = PAGES[key][0]; nodes = PAGES[key][1](); }
   else if (key === "report" && arg) { title = "Projektbericht"; nodes = reportView(decodeURIComponent(arg)); }
   else { title = "MatheRechner"; nodes = home(); }

@@ -10,7 +10,10 @@ const r4 = (v) => (Math.abs(v) < 1e-10 ? "0" : String(+v.toFixed(4)));
 export function graphView() {
   const saved = JSON.parse(localStorage.getItem(KEY) || "null");
   const st = saved ?? { fns: ["a*sin(x)", "x^2/4 - 1", "", ""], params: {}, view: { cx: 0, cy: 0, scale: 40 }, points: true, area: { on: false, a: "-1", b: "2" }, deg: false };
+  st.curve ??= { mode: "off", x: "cos(3t)", y: "sin(2t)", r: "1 + cos(t)", a: "0", b: "2pi" };
+  st.deriv ??= false;
   const persist = () => localStorage.setItem(KEY, JSON.stringify(st));
+  let curve = null; // Parameter- bzw. Polarkurve: { pts: [[x, y], …] }
 
   const canvas = h("canvas", { class: "graph-canvas", "aria-label": "Funktionsgraph" });
   const wrap = h("div", { class: "graph-wrap chart-row row" }, canvas);
@@ -33,7 +36,26 @@ export function graphView() {
       try { return { f: M.compileFn(src, { scope, deg: st.deg }), d: M.compileFn(M.derivative(src).toString(), { scope, deg: st.deg }), color: COLORS[i], name: `f${i + 1}` }; }
       catch (e) { errBox.append(msgRow(`f${i + 1}: Ausdruck nicht lesbar (${e.message.split("(")[0].trim()})`, "error")); return null; }
     });
-    renderSliders(); persist(); draw(); scheduleSpecial();
+    buildCurve(); renderSliders(); persist(); draw(); scheduleSpecial();
+  }
+  // Parameterkurve x(t), y(t) bzw. Polarkurve r(t) mit t = Winkel (Bogenmaß) – vorab abgetastet
+  const curveErr = h("div");
+  function buildCurve() {
+    curve = null; curveErr.replaceChildren();
+    const c = st.curve; if (c.mode === "off") return;
+    try {
+      const scope = Object.fromEntries(Object.entries(st.params).map(([k, p]) => [k, p.v]));
+      const a = M.parse(c.a), b = M.parse(c.b);
+      if (a === null || b === null || !(b > a)) throw new Error("Bereich");
+      const fx = c.mode === "param" ? M.compileFn(c.x, { scope, variable: "t" }) : null, fy = c.mode === "param" ? M.compileFn(c.y, { scope, variable: "t" }) : null;
+      const fr = c.mode === "polar" ? M.compileFn(c.r, { scope, variable: "t" }) : null;
+      const N = 2000, pts = [];
+      for (let k = 0; k <= N; k++) {
+        const t = a + ((b - a) * k) / N;
+        if (c.mode === "param") pts.push([fx(t), fy(t)]); else { const r = fr(t); pts.push([r * Math.cos(t), r * Math.sin(t)]); }
+      }
+      curve = { pts };
+    } catch (e) { curveErr.replaceChildren(msgRow(e.message === "Bereich" ? "t-Bereich prüfen (von < bis)." : "Kurve: Ausdruck nicht lesbar (Variable ist t).", "error")); }
   }
   function renderSliders() {
     const rows = Object.entries(st.params).map(([k, p]) => {
@@ -106,6 +128,21 @@ export function graphView() {
           if (pen) ctx.lineTo(px, cy); else ctx.moveTo(px, cy);
           pen = true; lastPy = py;
         }
+        ctx.stroke();
+      }
+      // Ableitung von f1 (gestrichelt)
+      if (st.deriv && compiled[0]) {
+        ctx.strokeStyle = compiled[0].color; ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]); ctx.beginPath(); let pen = false;
+        for (let px = -1; px <= w + 1; px += 1) { const x = toWorld(px, 0)[0]; let y; try { y = compiled[0].d(x); } catch { y = NaN; }
+          if (!Number.isFinite(y)) { pen = false; continue; } const py = Math.max(-1e4, Math.min(1e4, toPx(0, y)[1])); if (pen) ctx.lineTo(px, py); else ctx.moveTo(px, py); pen = true; }
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+      // Parameter-/Polarkurve
+      if (curve) {
+        ctx.strokeStyle = "#ff9500"; ctx.lineWidth = 2.2; ctx.beginPath(); let pen = false, last = null;
+        for (const [x, y] of curve.pts) { if (!Number.isFinite(x) || !Number.isFinite(y)) { pen = false; continue; } const [px, py] = toPx(x, y);
+          if (pen && last && Math.hypot(px - last[0], py - last[1]) > Math.max(w, hh)) pen = false;
+          if (pen) ctx.lineTo(px, py); else ctx.moveTo(px, py); pen = true; last = [px, py]; }
         ctx.stroke();
       }
       // Besondere Punkte
@@ -195,8 +232,9 @@ export function graphView() {
     btn("+", zoomBtn(1.5), "Vergrößern"), btn("−", zoomBtn(1 / 1.5), "Verkleinern"),
     btn("⌂", () => { st.view = { cx: 0, cy: 0, scale: 40 }; trace = null; persist(); draw(); scheduleSpecial(); }, "Standardansicht"),
     btn("Punkte", (e) => { st.points = !st.points; e.target.classList.toggle("on", st.points); persist(); draw(); }, "Besondere Punkte ein/aus"),
+    btn("f1′", (e) => { st.deriv = !st.deriv; e.target.classList.toggle("on", st.deriv); persist(); draw(); }, "Ableitung von f1 einblenden (gestrichelt)"),
     btn(st.deg ? "DEG" : "RAD", (e) => { st.deg = !st.deg; e.target.textContent = st.deg ? "DEG" : "RAD"; rebuild(); }, "Winkelmaß für sin/cos/tan"));
-  toolbar.children[3].classList.toggle("on", st.points);
+  toolbar.children[3].classList.toggle("on", st.points); toolbar.children[4].classList.toggle("on", st.deriv);
 
   const fnRows = st.fns.map((src, i) => {
     const row = inputRow(`f${i + 1}(x) =`, "", src, (e) => { st.fns[i] = e.target.value; clearTimeout(row._t); row._t = setTimeout(rebuild, 250); }, undefined, "text");
@@ -210,6 +248,20 @@ export function graphView() {
     inputRow("bis b =", "", st.area.b, (e) => { st.area.b = e.target.value; persist(); draw(); renderList(); }),
   ];
 
+  // Parameter-/Polarkurve
+  const curveBox = h("div");
+  const curveRows = () => {
+    const c = st.curve, upd = (k) => (e) => { c[k] = e.target.value; clearTimeout(curveBox._t); curveBox._t = setTimeout(() => { buildCurve(); persist(); draw(); }, 250); };
+    const seg = h("div", { class: "row seg-row" }, h("div", { class: "seg" }, ...[["off", "Aus"], ["param", "Parameter x(t), y(t)"], ["polar", "Polar r(t)"]].map(([v, t]) =>
+      h("button", { class: v === c.mode ? "on" : "", onclick: () => { c.mode = v; buildCurve(); persist(); draw(); curveBox.replaceChildren(...curveRows()); } }, t))));
+    const rows = [seg];
+    if (c.mode === "param") rows.push(inputRow("x(t) =", "", c.x, upd("x"), undefined, "text"), inputRow("y(t) =", "", c.y, upd("y"), undefined, "text"));
+    if (c.mode === "polar") rows.push(inputRow("r(t) =", "", c.r, upd("r"), undefined, "text"));
+    if (c.mode !== "off") rows.push(inputRow("t von", "", c.a, upd("a"), undefined, "text"), inputRow("t bis", "", c.b, upd("b"), undefined, "text"));
+    return section("Parameter- und Polarkurven", rows, c.mode === "polar" ? "Polarkurve: x = r(t)·cos t, y = r(t)·sin t, t im Bogenmaß (z. B. 0 bis 2pi)." : c.mode === "param" ? "Variable t; z. B. Lissajous-Figur x = cos(3t), y = sin(2t), t von 0 bis 2pi." : "Zusätzliche Kurve in Orange.");
+  };
+  curveBox.append(...curveRows());
+
   new ResizeObserver(() => draw()).observe(canvas);
   setTimeout(rebuild, 0);
   return [
@@ -217,6 +269,7 @@ export function graphView() {
     errBox,
     h("div", { class: "group", style: "margin-top:12px" }, toolbar, wrap, h("div", { class: "row" }, info)),
     sliderBox,
+    curveBox, curveErr,
     ...section("Fläche / Integral", areaRows),
     listBox,
   ];

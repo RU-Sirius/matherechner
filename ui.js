@@ -58,7 +58,7 @@ export function calcView({ init, inputs, compute, resultTitle = "Ergebnis", foot
   const resultBox = h("div");
   const bind = (k) => (e) => { s[k] = e.target.value; renderResult(); };
   const set = (k, v) => { s[k] = v; renderAll(); };
-  const field = (k, label, unit) => inputRow(label, unit, s[k], bind(k));
+  const field = (k, label, unit, mode) => inputRow(label, unit, s[k], bind(k), undefined, mode);
   const renderResult = () => {
     let rows;
     try { rows = compute(s, C.parse); }

@@ -110,3 +110,22 @@ let ops = M.complexOps("3+4i", "1-2i", { deg: true, n: 2 }); const get = (l) => 
 near(get("z₁ · z₂").re, 11); near(get("z₁ · z₂").im, -2); near(get("z₁ ÷ z₂").re, -1); near(get("z₁ ÷ z₂").im, 2);
 near(get("z₁^2").re, -7); near(get("z₁^2").im, 24); near(get("√z₁ (Hauptwert)").re, 2); near(get("√z₁ (Hauptwert)").im, 1);
 console.log("Komplexe Zahlen ok.");
+{
+  const G = await import("./geo.js");
+  const eq = (a, b) => a.forEach((x, i) => near(x, b[i]));
+  let r = G.lineLine([0, 0, 0], [1, 0, 0], [1, -1, 0], [0, 1, 0]); assert.equal(r.kind, "schneidend"); eq(r.S, [1, 0, 0]); near(r.angle, 90);
+  r = G.lineLine([0, 0, 0], [1, 0, 0], [0, 1, 1], [0, 1, 0]); assert.equal(r.kind, "windschief"); near(r.dist, 1);
+  assert.equal(G.lineLine([0, 0, 0], [1, 1, 1], [2, 2, 2], [-2, -2, -2]).kind, "identisch"); near(G.lineLine([0, 0, 0], [1, 0, 0], [0, 3, 4], [2, 0, 0]).dist, 5);
+  const E = G.planeFrom3([1, 0, 0], [0, 1, 0], [0, 0, 1]); near(E.d / E.n[0], 1);
+  r = G.linePlane([0, 0, 0], [1, 1, 1], E); eq(r.S, [1 / 3, 1 / 3, 1 / 3]); near(r.angle, 90);
+  near(G.linePlane([0, 0, 0], [1, -1, 0], E).dist, 1 / Math.sqrt(3));
+  r = G.planePlane(G.planeFromCoord(0, 0, 1, 0), G.planeFromCoord(1, 0, 0, 2)); assert.equal(r.kind, "schneidend"); near(r.P[0], 2); near(r.P[2], 0); near(r.angle, 90);
+  near(G.planePlane(G.planeFromCoord(0, 0, 1, 0), G.planeFromCoord(0, 0, 2, 6)).dist, 3);
+  near(G.pointPlane([1, 2, 5], G.planeFromCoord(0, 0, 1, 2)).dist, 3); near(G.pointLine([0, 3, 4], [0, 0, 0], [1, 0, 0]).dist, 5);
+  // Signifikanztest: n = 100, p0 = 0,5, α = 5 % rechtsseitig → Ablehnung ab 59 (P(X ≥ 59) ≈ 0,0443, P(X ≥ 58) ≈ 0,0666)
+  r = G.binomialTest({ n: 100, p0: 0.5, alpha: 0.05, side: "right", k: 60 }); assert.equal(r.kRight, 59); near(r.alphaReal, 0.04431304005703372, 1e-9); assert.equal(r.decision, true);
+  r = G.binomialTest({ n: 100, p0: 0.5, alpha: 0.05, side: "two" }); assert.equal(r.kLeft, 39); assert.equal(r.kRight, 61);
+  r = G.binomialTest({ n: 100, p0: 0.5, alpha: 0.05, side: "left", p1: 0.4 }); assert.equal(r.kLeft, 41);
+  r = G.tree({ pA: 0.01, pBgA: 0.99, pBgnA: 0.05 }); near(r.pB, 0.0099 + 0.0495); near(r.pAgB, 0.0099 / 0.0594);
+  console.log("Geometrie/Test/Baum ok.");
+}

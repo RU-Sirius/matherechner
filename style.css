@@ -229,3 +229,19 @@ body.calc-home main { padding-bottom: 0; }
 .bn-row .bn-l { font: 700 10px -apple-system, sans-serif; opacity: .7; }
 .bn-row:not(:first-child) { font-size: 12px; }
 .la-calc-out { flex: 1 1 auto; display: flex; justify-content: flex-end; align-items: center; overflow: hidden; font-size: 1.15em; padding: 2px 4px; }
+/* ---------- Suche ---------- */
+.search-wrap { margin: 12px 0 0; }
+.search-input { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; padding: 9px 12px; border: 0; border-radius: 10px; background: color-mix(in srgb, var(--sub) 18%, transparent); color: var(--text); outline: none; }
+.search-input:focus { box-shadow: 0 0 0 2px var(--accent); }
+[hidden] { display: none !important; }
+.group + .group { margin-top: 20px; }
+/* ---------- Baumdiagramm & Vierfeldertafel ---------- */
+.tree-svg { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; }
+.tree-svg .tl { stroke: var(--sub); stroke-width: 1.4; }
+.tree-svg .tn { fill: var(--card); stroke: var(--accent); stroke-width: 1.6; }
+.tree-svg .tn0 { fill: var(--accent); }
+.tree-svg .tt { font: 600 12px -apple-system, sans-serif; fill: var(--text); }
+.tree-svg .tp { font: 11px -apple-system, sans-serif; fill: var(--sub); }
+.tree-svg .tr { font: 600 11px -apple-system, sans-serif; fill: var(--text); }
+.ttable.four { margin: 0 auto; } .ttable.four th, .ttable.four td { padding: 4px 10px; text-align: right; }
+.wide-select { width: 100%; font: inherit; padding: 6px 4px; background: transparent; color: var(--text); border: 0; }

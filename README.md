@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.5.1)
+## Funktionen (v1.6.0)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
@@ -44,6 +44,7 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
 - Automatische Schieberegler für Parameter (z. B. a·sin(b·x))
 - Nullstellen, Hoch-/Tief-/Sattelpunkte und Schnittpunkte im sichtbaren Bereich, Spur mit Funktionswerten
 - Fläche unter f1 mit Integralwert
+- Ableitung f1′ einblendbar (gestrichelt) · Parameterkurven x(t), y(t) und Polarkurven r(t)
 
 **Gleichungen**
 - Polynomgleichungen Grad 2–6 (reell und komplex; Grad 2 zusätzlich exakt)
@@ -59,17 +60,24 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
 **Lineare Algebra**
 - Matrizen bis 4 × 4: Determinante, Inverse (exakt), Transponierte, Rang, Eigenwerte, A ± B, A · B
 - Vektoren 2D/3D: Betrag, Einheitsvektor, Skalar- und Kreuzprodukt, Winkel, Parallelogrammfläche
+- Geraden & Ebenen: Lage zweier Geraden (schneidend/parallel/identisch/windschief, Schnittpunkt, Abstand, Winkel), Gerade–Ebene, Ebene–Ebene (Schnittgerade), Abstand Punkt–Ebene/Gerade mit Lotfußpunkt, Ebene aus Parameterform oder 3 Punkten (Koordinaten- und Hessesche Normalenform)
 
 **Statistik & Wahrscheinlichkeit**
 - 1-Variablen-Statistik mit Häufigkeiten, Quartilen, Modus
 - Regression: linear, quadratisch, exponentiell, logarithmisch, Potenz
 - Normal-, Binomial- und Poisson-Verteilung (Wahrscheinlichkeiten, Quantile)
 - Kombinatorik (nCr, nPr, mit Wiederholung, n!)
+- Signifikanztest (Binomialverteilung, links-/rechts-/beidseitig): Ablehnungsbereich, tatsächliche Irrtumswahrscheinlichkeit, Fehler 2. Art, Entscheidung
+- Zweistufiges Baumdiagramm mit Vierfeldertafel, totaler Wahrscheinlichkeit und Satz von Bayes
 
 **Nachschlagen**
 - Einheiten umrechnen · physikalische Konstanten
 
 **Arbeiten mit der App**
+- **Suche** auf der Startseite (auch nach Synonymen, z. B. „Wallbox“, „FI“, „pq-Formel“); Enter öffnet den ersten Treffer
+- **Zuletzt verwendet**: die letzten Rechner oben auf der Startseite
+- **Datensicherung** (Einstellungen): Projekte, Favoriten und Einstellungen als Datei exportieren und wieder einspielen (iPhone: Teilen-Menü → „In Dateien sichern“)
+- **Weitere Apps** (Einstellungen): Links zu den anderen Rechnern der Reihe
 - Favoriten, Projekte, PDF über das Teilen-Menü, Projektberichte, Offline-Betrieb, automatische Updates
 
 ## Hinweise
@@ -78,7 +86,7 @@ erfolgt im angegebenen bzw. sichtbaren Bereich. Quartile: Median der unteren/obe
 
 ## Entwicklung
 - `mx.js`: Rechenlogik · Tests: `node test.mjs`
-- `views.js`, `views2.js`: Rechner · `graph.js`: Funktionsplotter · `fx.js`: Schulrechner-Ansicht mit Formelsatz · `lcdmodes.js`: Rechner-Modi im Display · `mathlib.js` + `vendor/math.js`: math.js
+- `views.js`, `views2.js`, `views3.js`: Rechner · `geo.js`: Geometrie/Signifikanztest/Baumdiagramm · `extras.js`: Suche, Zuletzt verwendet, Datensicherung · `graph.js`: Funktionsplotter · `fx.js`: Schulrechner-Ansicht mit Formelsatz · `lcdmodes.js`: Rechner-Modi im Display · `mathlib.js` + `vendor/math.js`: math.js
 - `ui.js`, `projects.js` (Speicher-Namensraum `mx:`), `pdf.js`, `install.js`, `icons.js`, `app.js`
 - `sw.js`: Offline-Cache. **Nach Änderungen `CACHE`-Version erhöhen.**
 
