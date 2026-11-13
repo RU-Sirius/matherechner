@@ -19,7 +19,8 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
   // ---------- Werte ----------
   const ev = (src) => M.evaluate(String(src), { deg: cfg.deg, scope: { ...vars } }).value;
   const evNum = (src) => { const v = ev(src); const n = typeof v === "number" ? v : math.isComplex(v) && Math.abs(v.im) < 1e-12 ? v.re : NaN; if (!Number.isFinite(n)) throw new Error("Math ERROR"); return n; };
-  const exactOf = (v) => { try { return M.evaluate(String(v)).exact; } catch { return null; } };
+  const exactOf = (v) => M.exactStr(v); // Rundungsreste/Wurzel/π des berechneten Werts, ohne den Wert neu zu parsen
+  const cellVal = (v) => M.exactValue(v, { deg: cfg.deg, scope: { ...vars } }); // Zelle exakt (Bruch) oder Gleitkomma (√2, π …)
   // Negative Brüche mit Minus vor dem Bruchstrich (−¼ statt (−1)/4)
   const exNode = (str) => (/^[−-]\d+\/\d+$/.test(str) ? span("nm", "−", exactNode(str.slice(1))) : exactNode(str));
   function valNode(v) {
@@ -171,7 +172,7 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
     push({ type: "grid", title: `Gleichungssystem ${n} Unbekannte`, hint: "= lösen", headers: [...vn, "="], sel: [0, 0],
       rows: () => n, get: (r, c) => D[r][c], set: (r, c, v) => { D[r][c] = v; persist(); },
       solve: () => {
-        const A = D.map((row) => row.slice(0, n).map((v) => M.toFrac(v === "" ? 0 : evNum(v)))), b = D.map((row) => M.toFrac(row[n] === "" ? 0 : evNum(row[n])));
+        const A = D.map((row) => row.slice(0, n).map(cellVal)), b = D.map((row) => cellVal(row[n]));
         const r = M.linearSystem(A, b);
         if (r.kind === "none") return result("Lösung", [["", span("nc", "Keine Lösung")]]);
         if (r.kind === "infinite") return result("Lösung", [["", span("nc", "Unendlich viele Lösungen")]]);
@@ -190,7 +191,8 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
         const ex = n === 2 ? M.quadraticExact(...cs) : null;
         z.forEach((zz, i) => {
           const exText = ex && ex.text.length === 2 ? ex.text[i] : ex && ex.text.length === 1 ? ex.text[0] : null;
-          lines.push([`x${"₁₂₃₄₅₆"[i]} =`, exText && !exText.includes("i") ? exactNode(exText.replace(/ /g, "")) : zz.im === 0 ? zz.re : math.complex(zz.re, zz.im)]);
+          const rx = !exText || exText.includes("i") ? M.rootExact(zz) : null; // komplexe/irrationale Lösungen exakt (−1 − √3 i)
+          lines.push([`x${"₁₂₃₄₅₆"[i]} =`, exText && !exText.includes("i") ? exactNode(exText.replace(/ /g, "")) : rx ? exactNode(rx) : zz.im === 0 ? zz.re : math.complex(zz.re, zz.im)]);
         });
         if (n === 2) { const xs = -cs[1] / (2 * cs[0]); lines.push([cs[0] > 0 ? "x-Wert Min =" : "x-Wert Max =", xs], [cs[0] > 0 ? "y-Wert Min =" : "y-Wert Max =", cs[2] - cs[1] ** 2 / (4 * cs[0])]); }
         result("Lösungen", lines);
@@ -213,7 +215,7 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
 
   // ---------- Matrix ----------
   function matStore(name) { store[`mat${name}`] ??= { r: 2, c: 2, d: [["", ""], ["", ""]] }; return store[`mat${name}`]; }
-  const matVal = (m) => m.d.map((row) => row.map((v) => M.toFrac(v === "" ? 0 : evNum(v))));
+  const matVal = (m) => m.d.map((row) => row.map(cellVal));
   const MATS = "ABCD";
   function matrixMenu() {
     menu("Matrix", [...[...MATS].map((n) => [`Mat${n} bearbeiten (${matStore(n).r}×${matStore(n).c})`, () => matSize(n)]),
@@ -221,8 +223,9 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
   }
   // Rechenbildschirm: Ausdrücke mit MatA–MatD wie beim Schulrechner (ALPHA A–D bzw. OPTN fügt MatA … ein)
   function matScope() {
-    const sc = { Trn: (x) => math.transpose(x), Ident: (n) => math.identity(Number(n)).toArray(), Rang: (x) => M.rref(x.toArray ? x.toArray() : x).rank };
+    const sc = {};
     for (const n of MATS) { const m = matStore(n); sc[`Mat${n}`] = matVal(m); }
+    if (store.matAns) sc.MatAns = M.matFromStore(store.matAns);
     return sc;
   }
   function matCalc() {
@@ -231,20 +234,18 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
         ["Trn( – transponiert", () => calcIns("Trn(")], ["Ident( – Einheitsmatrix", () => calcIns("Ident(")], ["Rang(", () => calcIns("Rang(")]]),
       solve: () => {
         const src = M.autoClose(M.normalize(s.ed.text)); if (!src.trim()) return;
-        const sc = matScope(); if (store.matAns) sc.MatAns = store.matAns.map((r) => r.map((v) => M.toFrac(Number(v))));
+        const sc = matScope();
         let v;
-        try { v = math.evaluate(src, sc); } catch (e) { throw new Error(/dimension|size|Dimension/i.test(e.message) ? "Math ERROR: Größen passen nicht" : /singular|Inverse/i.test(e.message) ? "Math ERROR: det = 0" : /Undefined|Unexpected|Parenthesis|Value expected/.test(e.message) ? "Syntax ERROR" : "Math ERROR"); }
-        if (v?.toArray) v = v.toArray();
-        if (Array.isArray(v) && !Array.isArray(v[0])) v = v.map((x) => [x]);
-        if (Array.isArray(v)) store.matAns = v.map((r) => r.map((x) => math.number(x))), persist();
+        try { v = M.matEvaluate(src, sc, { deg: cfg.deg }); } catch (e) { throw new Error(/dimension|size|Dimension/i.test(e.message) ? "Math ERROR: Größen passen nicht" : /singular|Inverse/i.test(e.message) ? "Math ERROR: det = 0" : /Undefined|Unexpected|Parenthesis|Value expected/.test(e.message) ? "Syntax ERROR" : "Math ERROR"); }
+        if (Array.isArray(v)) store.matAns = M.matToStore(v), persist();
         s.out = v; edit = s.ed; render();
       } };
     push(s); edit = s.ed; render();
   }
   function calcIns(t) { pop(); key("ins", t); }
   function matEig(n) {
-    const m = matStore(n), a = matVal(m), inf = M.matInfo(a.map((r) => r.map((v) => math.number(v))));
-    const ev = inf.eigenvalues ? (inf.eigenvalues.toArray ? inf.eigenvalues.toArray() : inf.eigenvalues) : null;
+    const m = matStore(n), inf = M.matInfo(matVal(m));
+    const ev = inf.eigenvalues;
     result(`Mat${n}`, [["Rang =", inf.rank], ...(m.r === m.c ? [["det =", inf.det]] : []),
       ...(ev ? ev.map((v, i) => [`λ${"₁₂₃₄"[i]} =`, typeof v === "number" ? v : math.complex(v)]) : [["", span("nc", "Eigenwerte nur für quadratische Matrizen")]])]);
   }

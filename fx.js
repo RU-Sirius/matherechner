@@ -444,7 +444,7 @@ export function schoolCalc(menuItems = []) {
     if (!xs.length) { res = { error: "Keine Lösung gefunden" }; done = true; return paint(); }
     const x0 = Number(vars.x ?? 0), x = xs.reduce((p, q) => (Math.abs(q - x0) < Math.abs(p - x0) ? q : p));
     vars.x = x; vars.Ans = x; save();
-    res = { value: x, decimal: M.num(x), exact: M.evaluate(String(x)).exact, special: `x = ${M.num(x)}${xs.length > 1 ? `   (${xs.length} Lösungen in [−1000; 1000], Startwert x = ${M.num(x0)})` : ""}` };
+    res = { value: x, decimal: M.num(x), exact: M.exactStr(x), special: `x = ${M.num(x)}${xs.length > 1 ? `   (${xs.length} Lösungen in [−1000; 1000], Startwert x = ${M.num(x0)})` : ""}` };
     done = true; paint();
   }
   const openOptn = () => cm.cmplx ? overlay("OPTN – Komplex", [["i – imaginäre Einheit", I("i")], ["∠ – Polarform r∠φ (z. B. 5∠30)", I("∠")], ["Re – Realteil", I("re(")], ["Im – Imaginärteil", I("im(")],

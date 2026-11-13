@@ -116,7 +116,7 @@ export function polynomial() {
       const n = Number(s.deg), cs = Array.from({ length: n + 1 }, (_, i) => M.evaluate(s[`c${i}`] || "0").value).map(Number);
       if (!cs[0]) return [msgRow("Der höchste Koeffizient darf nicht 0 sein.", "error")];
       const z = M.polyRoots(cs);
-      const rows = z.map((zz, k) => resultRow(`x${"₁₂₃₄₅₆"[k]}`, cplx(zz), zz.im === 0 ? "good" : ""));
+      const rows = z.map((zz, k) => { const rx = M.rootExact(zz), c = cplx(zz); return resultRow(`x${"₁₂₃₄₅₆"[k]}`, rx && rx.replace(/ /g, "") !== c.replace(/ /g, "") ? `${rx}   (≈ ${c})` : c, zz.im === 0 ? "good" : ""); });
       if (n === 2) {
         const ex = M.quadraticExact(...cs);
         if (ex) rows.unshift(resultRow("Exakt", ex.text.join(" ;  ")));
@@ -161,12 +161,12 @@ export function linsys() {
         ...Array.from({ length: n }, (_, i) => section(`Gleichung ${i + 1}`, [...Array.from({ length: n }, (_, j) => field(`a${i}${j}`, `Koeffizient von ${vars[j]}`, "", "text")), field(`a${i}4`, "rechte Seite", "", "text")])).flat()];
     },
     compute: (s) => {
-      const n = Number(s.n), ev = (t) => { const v = M.evaluate(t || "0"); return M.toFrac(Number(v.value)); };
+      const n = Number(s.n), ev = (t) => M.exactValue(t || "0");
       const A = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => ev(s[`a${i}${j}`]))), b = Array.from({ length: n }, (_, i) => ev(s[`a${i}4`]));
       const res = M.linearSystem(A, b);
       if (res.kind === "none") return [msgRow("Keine Lösung (Gleichungen widersprechen sich).", "error")];
       if (res.kind === "infinite") return [msgRow(`Unendlich viele Lösungen (Rang ${res.rank} < ${n}).`, "warn")];
-      return res.x.map((v, k) => { const num = M.math.number(v); const fs = M.fracStr(v); return resultRow("xyzw"[k], fs === r(num) ? fs : `${fs}  ≈ ${r(num)}`, "good"); });
+      return res.x.map((v, k) => { const num = M.math.number(v); const fs = M.math.isFraction(v) ? M.fracStr(v) : M.exactStr(num); return resultRow("xyzw"[k], !fs || fs === r(num) ? r(num) : `${fs}  ≈ ${r(num)}`, "good"); });
     },
     footer: "Exakt mit Brüchen (Gauß-Jordan). Koeffizienten dürfen Brüche oder Ausdrücke sein.",
   });
@@ -227,7 +227,7 @@ export function sumView() {
       field("f", "Term in k", "", "text"), field("a", "von k =", ""), field("b", "bis", "")])],
     compute: (s, p) => {
       const v = M.sumProduct(M.compileFn(s.f, { variable: "k" }), p(s.a), p(s.b), s.mode === "prod");
-      const fr = M.evaluate(String(v)).exact;
+      const fr = M.exactStr(v);
       return [resultRow(s.mode === "sum" ? "Σ" : "Π", r(v, 14), "good"), fr ? resultRow("exakt", fr) : null];
     },
     rangeMsg: "Ganzzahlige Grenzen (von ≤ bis, max. 1 000 000 Glieder).",

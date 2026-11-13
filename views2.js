@@ -4,7 +4,12 @@ import { calcView, section, segmented, selectRow, resultRow, msgRow, h } from ".
 
 const r = (v, d = 10) => (typeof v === "number" ? M.num(v, d) : String(v));
 const ev = (t) => Number(M.evaluate(String(t || "0")).value);
-const fr = (v) => { const n = M.math.number(v); const f = M.fracStr(v); return f === r(n) ? f : `${f} (≈ ${r(n, 6)})`; };
+// Bruch exakt (mit Näherung), Gleitkommawert als Wurzel-/π-Form, wenn er genau darauf passt, sonst gerundet
+const fr = (v) => {
+  const n = M.math.number(v);
+  const f = M.math.isFraction(v) ? M.fracStr(v) : M.exactStr(n);
+  return !f || f === r(n) ? r(n) : `${f} (≈ ${r(n, 6)})`;
+};
 const matTable = (A, f = fr) => h("div", { class: "row chart-row" }, h("table", { class: "ttable" }, ...A.map((row) => h("tr", {}, ...row.map((v) => h("td", {}, f(v)))))));
 const numList = (t) => String(t).split(/[\s;]+|,(?=\s)/).map((x) => x.trim().replace(",", ".")).filter(Boolean).map(Number);
 
@@ -26,10 +31,10 @@ export function matrix() {
     },
     compute: (s) => {
       const R = Number(s.rows), Cc = Number(s.cols);
-      const read = (pre, rr, cc) => Array.from({ length: rr }, (_, i) => Array.from({ length: cc }, (_, j) => M.toFrac(ev(s[`${pre}${i}${j}`]))));
+      const read = (pre, rr, cc) => Array.from({ length: rr }, (_, i) => Array.from({ length: cc }, (_, j) => M.exactValue(s[`${pre}${i}${j}`])));
       const A = read("a", R, Cc);
       if (s.op === "info") {
-        const inf = M.matInfo(A.map((row) => row.map((v) => M.math.number(v))));
+        const inf = M.matInfo(A);
         const rows = [resultRow("Rang", String(inf.rank)), h("div", { class: "row" }, h("span", { class: "label" }, "Transponierte Aᵀ")), matTable(inf.transpose)];
         if (R === Cc) {
           rows.unshift(resultRow("Determinante", fr(inf.det), "good"));
@@ -40,7 +45,7 @@ export function matrix() {
         return rows;
       }
       const B = read("b", s.op === "mul" ? Cc : R, Cc);
-      const res = s.op === "add" ? M.math.add(A, B) : s.op === "sub" ? M.math.subtract(A, B) : M.math.multiply(A, B);
+      const res = M.matEvaluate(s.op === "add" ? "A + B" : s.op === "sub" ? "A - B" : "A * B", { A, B });
       return [h("div", { class: "row" }, h("span", { class: "label" }, { add: "A + B", sub: "A − B", mul: "A · B" }[s.op])), matTable(res)];
     },
     rangeMsg: "Einträge prüfen (Zahlen, Brüche oder Ausdrücke).",

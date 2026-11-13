@@ -93,9 +93,11 @@ export function normalize(src) {
 
 // Exakte Darstellung: Bruch, Wurzelform a·√b/c oder Vielfaches von π (wenn der Wert das genau trifft).
 const isSmallRational = (f, maxDen = 10000) => Number(f.d) <= maxDen && Math.abs(Number(f.n)) <= 1e12;
-function rationalApprox(x, maxDen = 10000) {
+// Toleranz nur für Rundungsreste der Gleitkommarechnung (wenige ulp), nicht für eingetippte Näherungen wie 0,333333333333.
+const RESIDUE = 1e-14;
+function rationalApprox(x, maxDen = 10000, tol = RESIDUE) {
   if (!Number.isFinite(x)) return null;
-  try { const f = math.fraction(x); if (Number(f.d) <= maxDen && Math.abs(math.number(f) - x) <= 1e-12 * Math.max(1, Math.abs(x))) return f; } catch { /* */ }
+  try { const f = math.fraction(x); if (Number(f.d) <= maxDen && Math.abs(math.number(f) - x) <= tol * Math.max(1, Math.abs(x))) return f; } catch { /* */ }
   return null;
 }
 function splitSquare(n) { // n = a²·b mit b quadratfrei
@@ -113,20 +115,48 @@ export function mixedStr(f) {
   return `${s < 0 ? "−" : ""}${Math.floor(n / d)} ${n % d}/${d}`;
 }
 // Liefert z. B. "2√3", "√2/2", "3π/4" – oder null.
-export function exactForm(x) {
+export function exactForm(x, tol = RESIDUE) {
   if (typeof x !== "number" || !Number.isFinite(x) || x === 0) return null;
-  const r = rationalApprox(x); if (r) return null; // rationale Zahlen zeigt fracStr
+  const r = rationalApprox(x, 10000, tol); if (r) return null; // rationale Zahlen zeigt fracStr
   const sign = x < 0 ? "−" : "", ax = Math.abs(x);
-  const q = rationalApprox(ax * ax, 1000);
+  const q = rationalApprox(ax * ax, 1000, 2 * tol);
   if (q && Number(q.n) <= 1e7) {
     const p = Number(q.n), d = Number(q.d);
     const [a, b] = splitSquare(p * d); // √(p/d) = √(p·d)/d = a√b/d
     const g = math.gcd(a, d), A = a / g, D = d / g;
     if (b > 1) return `${sign}${A === 1 ? "" : A}√${b}${D === 1 ? "" : "/" + D}`;
   }
-  const k = rationalApprox(ax / Math.PI, 1000);
+  const k = rationalApprox(ax / Math.PI, 1000, tol);
   if (k) { const n = Number(k.n), d = Number(k.d); return `${sign}${n === 1 ? "" : n}π${d === 1 ? "" : "/" + d}`; }
   return null;
+}
+// Exakte Darstellung eines bereits berechneten Gleitkommawerts: Bruch (nur bei Rundungsrest), Wurzel- oder π-Form.
+export function exactStr(x, tol = RESIDUE) {
+  if (math.isFraction(x)) return fracStr(x);
+  if (typeof x !== "number" || !Number.isFinite(x)) return null;
+  const f = rationalApprox(x, 10000, tol);
+  if (f) return Number(f.d) > 1 ? fracStr(f) : null;
+  return exactForm(x, tol);
+}
+
+// Numerisch bestimmte Nullstelle z = re + im·i exakt schreiben: „−1 − √3 i“, „−1/2 + √3 i/2“, „√2“.
+// tol ist großzügiger als bei eingetippten Zahlen, weil der Wert ohnehin aus einem Näherungsverfahren stammt.
+// null, wenn kein Teil eine exakte Form hat (dann bleibt die Dezimaldarstellung).
+export function rootExact(z, tol = 1e-11) {
+  const re = typeof z === "number" ? z : z.re, im = typeof z === "number" ? 0 : z.im;
+  const scale = Math.max(1, Math.abs(re), Math.abs(im));
+  const part = (v) => {
+    const f = rationalApprox(v, 10000, tol); if (f) return { s: fracStr(f), nice: true };
+    const e = exactForm(v, tol); return e ? { s: e, nice: true } : { s: num(v, 10), nice: false };
+  };
+  const reZero = Math.abs(re) <= 1e-12 * scale, imZero = Math.abs(im) <= 1e-12 * scale;
+  const R = reZero ? null : part(Math.abs(re)), I = imZero ? null : part(Math.abs(im));
+  if (!(R?.nice || I?.nice)) return null;
+  if (!I) return `${re < 0 ? "−" : ""}${R.s}`;
+  // i in den Zähler: √3/2 → √3 i/2, 1 → i, 1/2 → i/2
+  const k = I.s.lastIndexOf("/"), numPart = k < 0 ? I.s : I.s.slice(0, k), den = k < 0 ? "" : I.s.slice(k);
+  const iTxt = `${numPart === "1" ? "" : numPart + " "}i${den}`;
+  return R ? `${re < 0 ? "−" : ""}${R.s} ${im < 0 ? "−" : "+"} ${iTxt}` : `${im < 0 ? "−" : ""}${iTxt}`;
 }
 
 /**
@@ -149,21 +179,30 @@ export function evaluate(src, { deg = false, scope = {} } = {}) {
   const expr = polarize(autoClose(normalize(src).trim()));
   if (!expr) fail("empty");
   const dec = engine(deg, false).evaluate(expr, scope);
-  let exact = null, mixed = null;
+  let exact = null, mixed = null, fraction = null;
   // Exakt mit Brüchen versuchen (nur wenn ohne Fehler und Ergebnis ein Bruch ist)
   try {
     const exScope = Object.fromEntries(Object.entries(scope).map(([k, v]) => [k, typeof v === "number" ? (rationalApprox(v) ?? v) : v]));
     const ex = engine(deg, true).evaluate(expr, exScope);
-    if (math.isFraction(ex) && isSmallRational(ex, 1e9)) { exact = fracStr(ex); mixed = mixedStr(ex); }
+    if (math.isFraction(ex)) { fraction = ex; if (isSmallRational(ex, 1e9)) { exact = fracStr(ex); mixed = mixedStr(ex); } }
   } catch { /* exakte Auswertung nicht möglich */ }
   const decimal = num(dec);
-  // Rundungsreste wie sin 30° = 0,49999999999999994 → ½ (wie im Math-Modus eines Schulrechners)
-  if (!exact && typeof dec === "number" && !Number.isInteger(dec)) { const f = rationalApprox(dec); if (f && Number(f.d) > 1) { exact = fracStr(f); mixed = mixedStr(f); } }
-  if (!exact && typeof dec === "number") exact = exactForm(dec);
+  // Rundungsreste wie sin 30° = 0,49999999999999994 → ½ (wie im Math-Modus eines Schulrechners).
+  // Hat die Bruch-Rechnung den Wert exakt bestimmt (z. B. eingetipptes 0,333333333333), wird nichts „geraten“.
+  if (!fraction && typeof dec === "number") { exact = exactStr(dec); const f = exact && rationalApprox(dec); mixed = f ? mixedStr(f) : null; }
   if (exact === decimal) exact = null;
   if (/K_/.test(expr)) { exact = null; mixed = null; } // mit Naturkonstanten dezimal anzeigen
   if (typeof dec === "number" || math.isComplex(dec)) scope.Ans = dec;
-  return { value: dec, decimal, exact, mixed, isComplex: math.isComplex(dec) };
+  return { value: dec, decimal, exact, mixed, fraction, isComplex: math.isComplex(dec) };
+}
+// Wert eines Eingabefelds (Matrix-, Gleichungssystem-Zelle): exakter Bruch, wenn rational, sonst Gleitkommazahl.
+export function exactValue(src, opts = {}) {
+  if (String(src ?? "").trim() === "") return math.fraction(0);
+  const r = evaluate(src, { ...opts, scope: { ...(opts.scope ?? {}) } });
+  if (r.fraction) return r.fraction;
+  const v = r.value, n = typeof v === "number" ? v : math.isComplex(v) && Math.abs(v.im) < 1e-12 ? v.re : NaN;
+  if (!Number.isFinite(n)) throw new Error("Math ERROR");
+  return toFrac(n);
 }
 
 // Funktion einer Variablen kompilieren: "x^2 - 2" oder "f(x)=…", "y=…".
@@ -352,9 +391,30 @@ export function polyInequality(coeffs, op) {
   const singles = strict ? [] : uniq.filter((r) => !out.some(([lo, hi]) => r >= lo && r <= hi));
   return { intervals: out, closed: !strict, singles, roots: uniq };
 }
-// Lineares Gleichungssystem exakt (Brüche) per Gauß-Jordan; erkennt keine/unendlich viele Lösungen.
+// Lineares Gleichungssystem per Gauß-Jordan; erkennt keine/unendlich viele Lösungen.
+// Rationale Einträge → exakt mit Brüchen. Irrationale Einträge (√2, π …) → Gleitkomma mit Spaltenpivotsuche und
+// relativer Nulltoleranz, statt √2 in einen Riesenbruch zu verwandeln.
+const isExactEntry = (v) => math.isFraction(v) || (typeof v === "number" && rationalApprox(v) !== null);
+export const allExact = (rows) => rows.every((r) => r.every(isExactEntry));
+function rrefNumeric(rows) {
+  const M = rows.map((r) => r.map(Number)), m = M.length, n = M[0].length;
+  const scale = Math.max(1, ...M.flat().map(Math.abs)), eps = 1e-12 * scale;
+  const pivots = [];
+  for (let r = 0, lead = 0; r < m && lead < n; lead++) {
+    let p = r;
+    for (let i = r + 1; i < m; i++) if (Math.abs(M[i][lead]) > Math.abs(M[p][lead])) p = i;
+    if (Math.abs(M[p][lead]) <= eps) { for (let i = r; i < m; i++) M[i][lead] = 0; continue; }
+    [M[p], M[r]] = [M[r], M[p]];
+    const lv = M[r][lead];
+    M[r] = M[r].map((v) => v / lv);
+    for (let k = 0; k < m; k++) if (k !== r) { const f = M[k][lead]; if (f) M[k] = M[k].map((v, j) => (j === lead ? 0 : v - f * M[r][j])); }
+    pivots.push(lead); r++;
+  }
+  return { M: M.map((row) => row.map((v) => (Math.abs(v) <= eps ? 0 : v))), pivots, rank: pivots.length };
+}
 export function rref(rows) {
-  const M = rows.map((r) => r.map((v) => (typeof v === "object" ? v : rationalApprox(v) ?? math.fraction(v))));
+  if (!allExact(rows)) return rrefNumeric(rows);
+  const M = rows.map((r) => r.map((v) => (math.isFraction(v) ? v : rationalApprox(v))));
   const m = M.length, n = M[0].length;
   let lead = 0;
   const pivots = [];
@@ -386,18 +446,88 @@ export function solveEquation(src, a, b, opts = {}) {
 }
 
 // ---------- Matrizen & Vektoren ----------
-export const toFrac = (v) => rationalApprox(v) ?? v;
+export const toFrac = (v) => (math.isFraction(v) ? v : rationalApprox(v) ?? v);
+// Numerische Ergebnisse glätten: Rundungsreste nahe 0 bzw. nahe einer ganzen Zahl (relativ zur Matrixgröße) entfernen.
+function cleanNum(v, scale = 1) {
+  if (typeof v !== "number" || !Number.isFinite(v)) return v;
+  if (Math.abs(v) <= 1e-13 * scale) return 0;
+  const r = Math.round(v);
+  return Math.abs(v - r) <= 1e-13 * Math.max(1, Math.abs(v)) ? r : v;
+}
+const cleanMat = (A) => { const sc = Math.max(1, ...A.flat().map((v) => Math.abs(Number(v)))); return A.map((row) => row.map((v) => cleanNum(v, sc))); };
 export function matInfo(A) {
-  const F = A.map((r) => r.map(toFrac));
+  const exact = allExact(A);
+  const F = A.map((r) => r.map((v) => (exact ? toFrac(v) : Number(v))));
   const sq = A.length === A[0].length;
-  const r = { rank: rref(F).rank, transpose: math.transpose(F) };
+  const r = { rank: rref(F).rank, transpose: math.transpose(F), exact };
   if (sq) {
-    r.det = math.det(F);
-    if (!math.equal(r.det, 0)) r.inverse = math.inv(F);
-    try { r.eigenvalues = math.eigs(A.map((row) => row.map(Number))).values; } catch { r.eigenvalues = null; }
+    if (exact) {
+      r.det = math.det(F);
+      if (!math.equal(r.det, 0)) r.inverse = math.inv(F);
+    } else {
+      r.det = r.rank < A.length ? 0 : cleanNum(math.det(F), Math.max(1, ...F.flat().map(Math.abs)) ** A.length);
+      if (r.rank === A.length) r.inverse = cleanMat(math.inv(F));
+    }
+    try {
+      // Eigenwerte numerisch (QR); kleine Rundungsreste entfernen, damit 3 statt 2,9999999999999996 erscheint
+      const sc = Math.max(1, ...F.flat().map((v) => Math.abs(Number(v))));
+      r.eigenvalues = math.eigs(A.map((row) => row.map(Number))).values;
+      if (r.eigenvalues.toArray) r.eigenvalues = r.eigenvalues.toArray();
+      r.eigenvalues = r.eigenvalues.map((v) => (typeof v === "number" ? cleanNum(v, sc) : math.isComplex(v) && Math.abs(v.im) <= 1e-13 * sc ? cleanNum(v.re, sc) : v));
+    } catch { r.eigenvalues = null; }
   }
   return r;
 }
+
+// Matrix-Rechnung mit frei eingegebenem Ausdruck (MatA×MatB+MatC, MatA⁻¹, det(…), Trn(…), Ident(…), Rang(…)).
+// mats: { MatA: [[Fraction|number]] … }. Exakt mit Brüchen, solange alles rational ist; sonst Gleitkomma.
+const MAT_ENGINES = {};
+function matEngine(deg, exact) {
+  const key = `${deg}-${exact}`;
+  if (MAT_ENGINES[key]) return MAT_ENGINES[key];
+  const e = engine(deg, exact);
+  const arr = (x) => (x?.toArray ? x.toArray() : x);
+  const fns = {
+    Trn: (x) => e.transpose(x),
+    Ident: (n) => { const k = Number(n); if (!Number.isInteger(k) || k < 1 || k > 10) throw new Error("Math ERROR"); return Array.from({ length: k }, (_, i) => Array.from({ length: k }, (_, j) => (exact ? math.fraction(i === j ? 1 : 0) : i === j ? 1 : 0))); },
+    Rang: (x) => { const a = arr(x); return rref(Array.isArray(a[0]) ? a : [a]).rank; },
+    // A^k für ganze k (auch negativ über die Inverse) – math.js kennt Matrix^Bruch nicht
+    mpow: (a, b) => {
+      if (!e.isMatrix(a) && !Array.isArray(a)) return e.pow(a, b);
+      const k = Number(b);
+      if (!Number.isInteger(k) || Math.abs(k) > 64) throw new Error("Math ERROR");
+      let base = k < 0 ? e.inv(a) : a, out = null;
+      for (let n = Math.abs(k); n > 0; n >>= 1) { if (n & 1) out = out ? e.multiply(out, base) : base; if (n > 1) base = e.multiply(base, base); }
+      return out ?? fns.Ident(arr(a).length);
+    },
+  };
+  return (MAT_ENGINES[key] = { e, fns });
+}
+const isLossy = (err) => /implicitly convert|BigNumber|Fraction|Invalid argument/i.test(err?.message ?? "");
+export function matEvaluate(src, mats, { deg = false } = {}) {
+  const expr = autoClose(normalize(src).trim());
+  if (!expr) fail("empty");
+  const node = math.parse(expr).transform((n) => (n.isOperatorNode && n.op === "^" ? new math.FunctionNode(new math.SymbolNode("mpow"), n.args) : n));
+  const used = new Set(node.filter((n) => n.isSymbolNode).map((n) => n.name));
+  const exactOk = Object.entries(mats).every(([k, m]) => !used.has(k) || allExact(m)); // nur die verwendeten Matrizen zählen
+  const run = (exact) => {
+    const { e, fns } = matEngine(deg, exact);
+    const sc = { ...fns };
+    for (const [k, m] of Object.entries(mats)) sc[k] = m.map((row) => row.map((v) => (exact ? toFrac(v) : Number(v))));
+    let v = e.parse(node.toString()).compile().evaluate(sc);
+    if (v?.toArray) v = v.toArray();
+    if (Array.isArray(v) && !Array.isArray(v[0])) v = v.map((x) => [x]);
+    return v;
+  };
+  let v, exact = exactOk;
+  if (exactOk) { try { v = run(true); } catch (err) { if (!isLossy(err)) throw err; exact = false; } }
+  if (!exact) v = run(false);
+  if (!exact) v = Array.isArray(v) ? cleanMat(v) : cleanNum(v);
+  return v;
+}
+// MatAns speichern/laden, ohne Brüche in Gleitkommazahlen zu verwandeln.
+export const matToStore = (A) => A.map((row) => row.map((v) => (math.isFraction(v) ? fracStr(v) : Number(v))));
+export const matFromStore = (A) => A.map((row) => row.map((v) => (typeof v === "string" && /^-?\d+(\/\d+)?$/.test(v) ? math.fraction(v) : toFrac(Number(v)))));
 export function vectorInfo(u, v) {
   const nu = Math.hypot(...u), nv = v ? Math.hypot(...v) : null;
   const r = { normU: nu, unitU: nu ? u.map((x) => x / nu) : null };

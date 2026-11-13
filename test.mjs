@@ -151,3 +151,43 @@ console.log("Komplexe Zahlen ok.");
   assert.equal(M3.evaluate("K_speedOfLight").value, 299792458); assert.equal(M3.evaluate("2K_gravity").exact, null);
   console.log("Grenzen/Konstanten ok.");
 }
+
+// Exakte Darstellung: eingetippte Näherungen nicht als Bruch/Wurzel/π „erraten“, echte Rundungsreste schon
+for (const t of ["0.333333333333", "3.14159265359", "0.707106781187", "0.5000000000001", "1/3+1e-13"]) assert.equal(M.evaluate(t).exact, null, t);
+assert.equal(M.evaluate("cos(45)", { deg: true }).exact, "√2/2"); assert.equal(M.evaluate("tan(60)", { deg: true }).exact, "√3"); assert.equal(M.evaluate("asin(0.5)").exact, "π/6");
+assert.equal(M.exactStr(0.49999999999999994), "1/2"); assert.equal(M.exactStr(0.333333333333), null); assert.equal(M.exactStr(Math.SQRT2 * 3), "3√2"); assert.equal(M.exactStr(4), null);
+// Matrix-Rechnung: exakt, solange rational; irrationale Einträge/Faktoren numerisch statt Math ERROR
+{
+  const F = (t) => M.exactValue(t), mat = (a) => a.map((row) => row.map(F)), S = (A) => A.map((row) => row.map((v) => (M.math.isFraction(v) ? M.fracStr(v) : M.exactStr(v) ?? M.num(v))));
+  const mats = { MatA: mat([["1", "2"], ["3", "4"]]), MatB: mat([["√2", "1"], ["1", "√2"]]), MatD: mat([["1/12345", "1"], ["1", "1"]]) };
+  assert.deepEqual(S(M.matEvaluate("MatA^-1", mats)), [["-2", "1"], ["3/2", "-1/2"]]); assert.ok(M.math.isFraction(M.matEvaluate("MatA^-1", mats)[0][0]));
+  assert.deepEqual(S(M.matEvaluate("MatA^2", mats)), [["7", "10"], ["15", "22"]]); assert.deepEqual(S(M.matEvaluate("MatA^0", mats)), [["1", "0"], ["0", "1"]]);
+  assert.deepEqual(S(M.matEvaluate("MatD^-1", mats)), [["-12345/12344", "12345/12344"], ["12345/12344", "-1/12344"]]); // trotz √2 in MatB exakt
+  assert.equal(M.fracStr(M.matEvaluate("det(MatD)", mats)), "-12344/12345");
+  assert.deepEqual(S(M.matEvaluate("sqrt(2)*MatA", mats)), [["√2", "2√2"], ["3√2", "4√2"]]); assert.deepEqual(S(M.matEvaluate("π MatA", mats)), [["π", "2π"], ["3π", "4π"]]);
+  assert.deepEqual(S(M.matEvaluate("MatB^-1", mats)), [["√2", "-1"], ["-1", "√2"]]); assert.deepEqual(S(M.matEvaluate("MatB*MatB^-1", mats)), [["1", "0"], ["0", "1"]]);
+  assert.deepEqual(S(M.matEvaluate("MatB^2", mats)), [["3", "2√2"], ["2√2", "3"]]); assert.equal(M.matEvaluate("det(MatB)", mats), 1);
+  assert.deepEqual(S(M.matEvaluate("Ident(2)/3", mats)), [["1/3", "0"], ["0", "1/3"]]); assert.ok(M.math.isFraction(M.matEvaluate("Ident(2)/3", mats)[0][0]));
+  assert.deepEqual(S(M.matEvaluate("MatA/12345", mats))[0], ["1/12345", "2/12345"]); assert.equal(M.matEvaluate("Rang(MatB)", mats), 2);
+  assert.throws(() => M.matEvaluate("MatA^0.5", mats));
+  // MatAns verlustfrei speichern
+  const st = JSON.parse(JSON.stringify(M.matToStore(M.matEvaluate("MatD^-1", mats)))); assert.deepEqual(S(M.matFromStore(st)), S(M.matEvaluate("MatD^-1", mats)));
+  assert.deepEqual(S(M.matFromStore([[0.5, 0.25]])), [["1/2", "1/4"]]); // alte, als Zahl gespeicherte MatAns
+  // Rang/det/Inverse mit irrationalen Einträgen
+  let inf = M.matInfo([[Math.SQRT2, 2], [1, Math.SQRT2]]); assert.equal(inf.rank, 1); assert.equal(inf.det, 0); assert.equal(inf.inverse, undefined);
+  inf = M.matInfo(mats.MatB); assert.equal(inf.rank, 2); assert.equal(inf.det, 1); assert.deepEqual(S(inf.inverse), [["√2", "-1"], ["-1", "√2"]]);
+  inf = M.matInfo(mats.MatD); assert.equal(M.fracStr(inf.det), "-12344/12345"); assert.equal(M.fracStr(inf.inverse[1][1]), "-1/12344");
+  assert.deepEqual(M.matInfo([[2, 0], [0, 3]]).eigenvalues, [2, 3]);
+  const ls = M.linearSystem([[Math.SQRT2, 1], [1, -Math.SQRT2]], [3, 0]); assert.equal(ls.kind, "unique"); assert.deepEqual(ls.x.map((v) => M.exactStr(v) ?? M.num(v)), ["√2", "1"]);
+  assert.equal(M.linearSystem([[Math.SQRT2, 2], [1, Math.SQRT2]], [1, 1]).kind, "none");
+}
+console.log("Exakte Darstellung/Matrix-Genauigkeit ok.");
+// Nullstellen exakt, auch komplex und für Grad > 2
+{
+  const RX = (cs) => M.polyRoots(cs).map((z) => M.rootExact(z));
+  assert.deepEqual(RX([1, 2, 4, 0]), ["−1 − √3 i", "−1 + √3 i", null]); // x³ + 2x² + 4x
+  assert.deepEqual(RX([1, 1, 1]), ["−1/2 − √3 i/2", "−1/2 + √3 i/2"]); assert.deepEqual(RX([1, 0, 4]), ["−2 i", "2 i"]); assert.deepEqual(RX([1, 0, 1]), ["−i", "i"]);
+  assert.deepEqual(RX([1, 0, 0, -8]), ["−1 − √3 i", "−1 + √3 i", "2"]); assert.deepEqual(RX([1, 0, -2]), ["−√2", "√2"]);
+  assert.deepEqual(RX([2, 0, 0, 0, -1]), [null, null, null, null]); // ⁴√(1/2): keine exakte Form → dezimal
+}
+console.log("Exakte Nullstellen ok.");
