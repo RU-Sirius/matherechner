@@ -100,7 +100,9 @@ export function previewNode(text, cursor) {
   const L = M.normalize(text.slice(0, cursor)), R = M.normalize(text.slice(cursor));
   const lm = /[A-Za-z_]\w*$/.test(L) ? "" : L.match(/[\d.]*$/)[0], rm = lm === "" && /[A-Za-z_\d]$/.test(L) ? "" : R.match(/^[\d.]*/)[0];
   numCur = rm && /\d/.test(lm + rm) ? [lm, rm] : null;
-  let t = numCur ? `${L.slice(0, L.length - lm.length)} ${NUMCUR} ${R.slice(rm.length)}` : L + CUR + R;
+  // Marke direkt vor „(“: als (‸) einsetzen, sonst liest math.js „‸(…)“ als Funktionsaufruf
+  const markBeforeParen = !numCur && R.startsWith("(") && !/[A-Za-z_]$/.test(L);
+  let t = numCur ? `${L.slice(0, L.length - lm.length)} ${NUMCUR} ${R.slice(rm.length)}` : markBeforeParen ? `${L}(${CUR})${R}` : L + CUR + R;
   const open0 = (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
   if (open0 > 0) t += ")".repeat(open0); // fehlende Klammern zuerst ergänzen, dann leere Felder erkennen
   // leere Felder einer Vorlage als Kästchen □
@@ -110,7 +112,30 @@ export function previewNode(text, cursor) {
   t = t.replace(/([+\-*/^])(\s*)(?=$|[),])/g, `$1$2${BOX}`);
   const open = (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
   if (open > 0) t += ")".repeat(open);
-  return math.parse(t);
+  return caretOutside(math.parse(t));
+}
+// Implizite Multiplikation bindet in math.js stärker als „/“: „(a)/(b)‸“ würde zu a/(b·‸) und „‸(a)/(b)“ zu (‸·a)/b –
+// die Marke erschiene im Nenner bzw. Zähler, obwohl sie hinter bzw. vor dem Bruch steht. Hier zurechtrücken.
+const isCur = (x) => x?.isSymbolNode && x.name === CUR;
+const imul = (a, b) => new math.OperatorNode("*", "multiply", [a, b], true);
+const endsWithCur = (x) => isCur(x) || (x?.isOperatorNode && x.fn === "multiply" && x.implicit && endsWithCur(x.args[1]));
+const startsWithCur = (x) => isCur(x) || (x?.isOperatorNode && x.fn === "multiply" && x.implicit && startsWithCur(x.args[0]));
+function caretOutside(node) {
+  let n = node.map((c) => caretOutside(c));
+  if (n.isParenthesisNode && isCur(n.content)) return n.content; // (‸) → ‸
+  // Mit ÷ eingegeben (a÷b‸, ohne Bruch-Vorlage): weitere Ziffern verlängern den Nenner, also Marke ans Ende des Nenners
+  if (n.isOperatorNode && n.fn === "multiply" && n.implicit && isCur(n.args[1]) && n.args[0].isOperatorNode && n.args[0].fn === "divide" && !n.args[0].args[1].isParenthesisNode) {
+    const [a, b] = n.args[0].args;
+    return new math.OperatorNode("/", "divide", [a, imul(b, n.args[1])]);
+  }
+  if (n.isOperatorNode && n.fn === "divide") {
+    const [num, den] = n.args;
+    if (num.isOperatorNode && num.fn === "multiply" && num.implicit && endsWithCur(num.args[0]) && num.args[1].isParenthesisNode)
+      n = imul(num.args[0], new math.OperatorNode("/", "divide", [num.args[1], den])); // ‸(a)/(b) → ‸ · a/b
+    else if (den.isOperatorNode && den.fn === "multiply" && den.implicit && den.args[0].isParenthesisNode && startsWithCur(den.args[1]))
+      n = imul(new math.OperatorNode("/", "divide", [num, den.args[0]]), den.args[1]); // (a)/(b)‸ → a/b · ‸
+  }
+  return n;
 }
 export function natural(text, cursor = null) {
   occ = {};
