@@ -24,10 +24,20 @@ const CONST_SYM = Object.fromEntries(M.CONSTANTS.map(([k, , sym]) => [`K_${k}`, 
 // Felder von Vorlagen markieren, damit man sie im Display antippen kann (n-te Vorlage dieses Namens, Argument-Nr.)
 let occ = {};
 const fld = (el, fn, k, arg) => { el.dataset.fn = fn; el.dataset.occ = k; el.dataset.arg = arg; return el; };
+// Zahlen so zeigen, wie sie eingetippt wurden: „0.00“ statt „0“, „2.“ statt „2“ (math.js vergisst die Schreibweise).
+// Pro Wert eine Warteschlange der Originaltexte, gefüllt nur während natural() die Eingabe darstellt.
+let literals = null;
+const LITERAL_RE = /(?<![A-Za-z_\d.])(\d+\.\d*|\.\d+|\d+)(?![\d.]|e[-+]?\d)/g;
+function collectLiterals(t) {
+  const map = new Map();
+  for (const [tok] of String(t).matchAll(LITERAL_RE)) { const v = Number(tok); if (!map.has(v)) map.set(v, []); map.get(v).push(tok); }
+  return map;
+}
+const literalText = (v) => { const q = typeof v === "number" ? literals?.get(v) : null; return q?.length ? q.shift() : String(v); };
 function render(node) {
   const n = node;
   if (n.isParenthesisNode) return paren(render(n.content));
-  if (n.isConstantNode) return span("nc", String(n.value));
+  if (n.isConstantNode) return span("nc", literalText(n.value));
   if (n.isSymbolNode) {
     if (n.name === CUR) return span("caret", "");
     if (n.name.includes(CUR)) { const [l, r] = n.name.split(CUR); return span("nm", l, span("caret", ""), r); } // Schreibmarke an einem Namen
@@ -100,11 +110,14 @@ export function natural(text, cursor = null) {
     const t = cursor === null ? text : text.slice(0, cursor) + "\u0000" + text.slice(cursor);
     return span("nm", ...t.split("\u0000").flatMap((part, i) => (i ? [span("caret", ""), part] : [part])));
   }
-  try { return render(cursor === null ? math.parse(M.normalize(text)) : previewNode(text, cursor)); }
-  catch {
+  try {
+    const t = M.normalize(text);
+    literals = collectLiterals(t);
+    return render(cursor === null ? math.parse(t) : previewNode(text, cursor));
+  } catch {
     if (cursor === null) return span("nc", text);
     return span("nm", text.slice(0, cursor), span("caret", ""), text.slice(cursor));
-  }
+  } finally { literals = null; }
 }
 // ---------- Felder von Vorlagen (für ▲▼ und Antippen) ----------
 // Innerste Klammer bzw. Funktion um die Position: Name, Argumentgrenzen, Argument der Schreibmarke
