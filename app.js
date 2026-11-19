@@ -106,7 +106,7 @@ function settingsView() {
     ...X.appsSection(),
     ...section("Verwendete Software", [h("div", { class: "row" }, h("span", { class: "hint" },
       "math.js – Copyright Jos de Jong, Apache License 2.0 (siehe vendor/LICENSE-mathjs.txt im Repository).")) ]),
-    ...section("", [resultRow("Version", "1.8.9 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
+    ...section("", [resultRow("Version", "1.9.0 (Web)"), resultRow("Entwickelt von", "R. U. Sirius?"), resultRow("Lizenz", "MIT")]),
   ];
 }
 
@@ -121,8 +121,8 @@ function route() {
   if (key in TOOLS) { title = TOOLS[key][1]; nodes = TOOLS[key][3](); isTool = true; X.recent.track(key); }
   else if (key in PAGES) { title = PAGES[key][0]; nodes = PAGES[key][1](); }
   else if (key === "report" && arg) { title = "Projektbericht"; nodes = reportView(decodeURIComponent(arg)); }
-  else { title = "MatheRechner"; nodes = home(); }
-  const isHome = title === "MatheRechner";
+  else { title = "RootX"; nodes = home(); }
+  const isHome = title === "RootX";
   const calcHome = isHome && (localStorage.getItem(HOME_KEY) || "list") === "calc";
   titleEl.textContent = title;
   header.classList.toggle("sub", !isHome || calcHome); // in der Rechner-Ansicht kompakter Kopf
@@ -137,7 +137,7 @@ function route() {
   view.replaceChildren(...nodes);
   setPreset(null);
   if (isTool && !NO_SAVEBAR.has(key)) {
-    view.append(saveBar(key, title, view), h("div", { class: "print-only" }, `MatheRechner – Built by R. U. Sirius? · ${LEGAL}`));
+    view.append(saveBar(key, title, view), h("div", { class: "print-only" }, `RootX – Built by R. U. Sirius? · ${LEGAL}`));
   }
   window.scrollTo(0, 0);
 }

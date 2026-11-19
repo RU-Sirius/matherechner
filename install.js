@@ -21,7 +21,7 @@ export function installView() {
       "Rechts in der Adressleiste auf das Installieren-Symbol klicken (Bildschirm mit Pfeil nach unten) und „Installieren“ bestätigen.",
       "Falls das Symbol fehlt: Menü ⋮ oben rechts → „Streamen, speichern und teilen“ → „Seite als App installieren…“ (Bezeichnung je nach Chrome-Version).",
       "Die App öffnet sich in einem eigenen Fenster und liegt danach im Launchpad bzw. unter ~/Programme/Chrome-Apps. Für das Dock: App-Symbol im Dock rechtsklicken → Optionen → „Im Dock behalten“.",
-    ])], "Deinstallieren: In der App oben rechts auf ⋮ → „MatheRechner deinstallieren“, oder in Chrome chrome://apps öffnen und die App per Rechtsklick entfernen."),
+    ])], "Deinstallieren: In der App oben rechts auf ⋮ → „RootX deinstallieren“, oder in Chrome chrome://apps öffnen und die App per Rechtsklick entfernen."),
     ...box("Mac (Safari, ab macOS 14 Sonoma)", [steps([
       `${URL_APP} in Safari öffnen.`,
       "In der Menüleiste „Ablage“ → „Zum Dock hinzufügen…“ wählen und bestätigen.",

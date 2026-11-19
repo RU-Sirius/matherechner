@@ -71,7 +71,7 @@ export function saveBar(routeKey, title, root) {
       } }, "In Projekt speichern"),
       h("button", { class: "btn", onclick: () => {
         const date = fmtDate(new Date().toISOString());
-        sharePdf(`${safeFilename(title)}.pdf`, { title, subtitle: `MatheRechner · ${date}`,
+        sharePdf(`${safeFilename(title)}.pdf`, { title, subtitle: `RootX · ${date}`,
           blocks: snapshot(root).map((g) => ({ heading: g.title, rows: g.rows })), footer: `Built by R. U. Sirius? · ${LEGAL}` });
       } }, "PDF teilen / sichern"),
     ), h("div", { class: "btnrow" }, h("button", { class: "btn", style: "flex:1;opacity:.8", onclick: () => window.print() }, "Drucken"))],
@@ -103,7 +103,7 @@ export function reportView(project) {
     h("div", { class: "noprint" }, ...section("", [h("div", { class: "btnrow" },
       h("button", { class: "btn", onclick: () => sharePdf(`Projektbericht_${safeFilename(project)}.pdf`, {
         title: `Projektbericht: ${project}`,
-        subtitle: `MatheRechner · ${entries.length} Berechnung(en) · erstellt ${fmtDate(new Date().toISOString())}`,
+        subtitle: `RootX · ${entries.length} Berechnung(en) · erstellt ${fmtDate(new Date().toISOString())}`,
         blocks: entries.flatMap((e) => [{ big: e.name, text: `${e.title} · ${fmtDate(e.date)}` }, ...e.data.map((g) => ({ heading: g.title, rows: g.rows }))]),
         footer: `Built by R. U. Sirius? · ${LEGAL}` }) }, "Bericht als PDF"),
       h("button", { class: "btn", style: "opacity:.8", onclick: () => window.print() }, "Drucken"))])),
@@ -111,6 +111,6 @@ export function reportView(project) {
       h("div", { class: "report-head" }, h("h2", { style: "font-size:18px" }, e.name), h("div", { class: "report-meta" }, `${e.title} · ${fmtDate(e.date)}`)),
       ...e.data.flatMap((g) => section(g.title, g.rows.map(([a, b]) => resultRow(a, b)))),
     ]),
-    h("div", { class: "print-only", style: "display:block" }, `MatheRechner – Built by R. U. Sirius? · ${LEGAL}`),
+    h("div", { class: "print-only", style: "display:block" }, `RootX – Built by R. U. Sirius? · ${LEGAL}`),
   ];
 }

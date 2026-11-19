@@ -582,7 +582,7 @@ export function schoolCalc(menuItems = []) {
   document.addEventListener("keydown", onKey);
   setTimeout(paint, 0);
   const fxEl = h("div", { class: "fx" },
-    h("div", { class: "fx-top" }, span("fx-brand", "R. U. Sirius?"), span("fx-model", "MatheRechner")),
+    h("div", { class: "fx-top" }, span("fx-brand", "R. U. Sirius?"), span("fx-model", "RootX")),
     lcd, screen, app.el,
     h("div", { class: "fx-fn" }, ...fnKeys),
     h("div", { class: "fx-num" }, ...numKeys));

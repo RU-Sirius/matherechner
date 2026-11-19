@@ -7,7 +7,7 @@ const NAMESPACES = { elektro: "", mechanik: "mr:", mathe: "mx:" };
 export const APPS = [
   ["elektro", "ElektroRechner", "https://ru-sirius.github.io/elektrorechner/", "Elektrotechnik, Schutztechnik, PV, Automatisierung, Netzwerk"],
   ["mechanik", "MechanikRechner", "https://ru-sirius.github.io/mechanikrechner/", "Maschinenbau, Festigkeit, Antriebe, Fertigung, Hydraulik"],
-  ["mathe", "MatheRechner", "https://ru-sirius.github.io/matherechner/", "Schulrechner, Funktionsplotter, Gleichungen, Statistik"],
+  ["mathe", "RootX", "https://ru-sirius.github.io/matherechner/", "Schulrechner, Funktionsplotter, Gleichungen, Statistik"],
 ];
 
 export function createExtras(app) {

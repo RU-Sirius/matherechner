@@ -1,4 +1,4 @@
-# MatheRechner – Web-App
+# RootX – Web-App (früher MatheRechner)
 
 Offline-fähige Web-App (PWA) für Schule, Studium und Technik: wissenschaftlicher Taschenrechner mit exakten Ergebnissen,
 interaktiver Funktionsplotter und Werkzeuge für Gleichungen, Analysis, lineare Algebra und Statistik.
@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.8.9)
+## Funktionen (v1.9.0)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
@@ -100,7 +100,7 @@ erfolgt im angegebenen bzw. sichtbaren Bereich. Quartile: Median der unteren/obe
 - `sw.js`: Offline-Cache. **Nach Änderungen `CACHE`-Version erhöhen.**
 
 ## Lizenzen
-- MatheRechner: MIT (siehe `LICENSE`). Built by R. U. Sirius?
+- RootX: MIT (siehe `LICENSE`). Built by R. U. Sirius?
 - [math.js](https://mathjs.org) von Jos de Jong: Apache License 2.0 (`vendor/LICENSE-mathjs.txt`, `vendor/math.js.LICENSE.txt`).
 
 Kostenloses Hilfsmittel ohne Gewähr.

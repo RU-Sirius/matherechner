@@ -1,4 +1,4 @@
-// Rechenlogik MatheRechner. Baut auf math.js (Apache-2.0) auf.
+// Rechenlogik RootX. Baut auf math.js (Apache-2.0) auf.
 import { math } from "./mathlib.js";
 export { math };
 
