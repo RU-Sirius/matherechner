@@ -7,6 +7,9 @@ import { createLcdApp, menuLabel, menuIndex } from "./lcdmodes.js";
 
 const math = M.math;
 const CUR = "__c__", BOX = "__p__";
+// Zahl mit Schreibmarke darin („0.‸3“, „‸12“) als ein Stück, sonst zerlegt math.js sie in 0 · ‸ · 3
+const NUMCUR = "__k__";
+let numCur = null; // [Text links der Marke, Text rechts der Marke]
 const SKEY = "mx:fx", HKEY = "mx:fxhist", VKEY = "mx:fxvars";
 
 // ================= Natürliche Darstellung =================
@@ -40,6 +43,7 @@ function render(node) {
   if (n.isConstantNode) return span("nc", literalText(n.value));
   if (n.isSymbolNode) {
     if (n.name === CUR) return span("caret", "");
+    if (n.name === NUMCUR && numCur) return span("nc", numCur[0], span("caret", ""), numCur[1]);
     if (n.name.includes(CUR)) { const [l, r] = n.name.split(CUR); return span("nm", l, span("caret", ""), r); } // Schreibmarke an einem Namen
     if (n.name === BOX) return span("box", "");
     if (CONST_SYM[n.name]) return span("nv nconst", CONST_SYM[n.name]);
@@ -60,6 +64,7 @@ function render(node) {
       default: return span("nm", ...n.args.flatMap((x, i) => (i ? [span("nop", n.op), render(x)] : [render(x)])));
     }
   }
+  if (n.isFunctionNode && n.fn?.name === NUMCUR && numCur) return span("nm", render(n.fn), paren(span("nm", ...n.args.flatMap((x, i) => (i ? [", ", render(x)] : [render(x)])))));
   if (n.isFunctionNode) {
     const name = n.fn.name ?? String(n.fn), a = n.args;
     // Schreibmarke direkt vor (oder hinter) einem Funktionsnamen, z. B. ◀ vor ∫
@@ -92,7 +97,10 @@ function render(node) {
 
 // Vorschau der Eingabe mit Cursor (fehlende Klammern ergänzen, leere Felder als Kästchen).
 export function previewNode(text, cursor) {
-  let t = M.normalize(text.slice(0, cursor)) + CUR + M.normalize(text.slice(cursor));
+  const L = M.normalize(text.slice(0, cursor)), R = M.normalize(text.slice(cursor));
+  const lm = /[A-Za-z_]\w*$/.test(L) ? "" : L.match(/[\d.]*$/)[0], rm = lm === "" && /[A-Za-z_\d]$/.test(L) ? "" : R.match(/^[\d.]*/)[0];
+  numCur = rm && /\d/.test(lm + rm) ? [lm, rm] : null;
+  let t = numCur ? `${L.slice(0, L.length - lm.length)} ${NUMCUR} ${R.slice(rm.length)}` : L + CUR + R;
   const open0 = (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
   if (open0 > 0) t += ")".repeat(open0); // fehlende Klammern zuerst ergänzen, dann leere Felder erkennen
   // leere Felder einer Vorlage als Kästchen □
@@ -117,7 +125,7 @@ export function natural(text, cursor = null) {
   } catch {
     if (cursor === null) return span("nc", text);
     return span("nm", text.slice(0, cursor), span("caret", ""), text.slice(cursor));
-  } finally { literals = null; }
+  } finally { literals = null; numCur = null; }
 }
 // ---------- Felder von Vorlagen (für ▲▼ und Antippen) ----------
 // Innerste Klammer bzw. Funktion um die Position: Name, Argumentgrenzen, Argument der Schreibmarke
