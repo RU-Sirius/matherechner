@@ -120,7 +120,7 @@ export function distributions() {
     inputs: (s, { field, set }) => [
       ...section("Verteilung", [segmented([["norm", "Normal"], ["binom", "Binomial"], ["pois", "Poisson"]], s.dist, (v) => set("dist", v))]),
       ...section("Parameter", s.dist === "norm" ? [field("mu", "Erwartungswert μ", ""), field("sigma", "Standardabweichung σ", ""), field("a", "untere Grenze a", "", "text"), field("b", "obere Grenze b", "", "text"), field("p", "Quantil für p =", "")]
-        : s.dist === "binom" ? [field("n", "n", ""), field("pp", "p", ""), field("k", "k", "")] : [field("lambda", "λ", ""), field("k", "k", "")]),
+        : s.dist === "binom" ? [field("n", "n", ""), field("pp", "p", ""), field("k", "k (Liste: Werte mit ; trennen, z. B. 2; 3; 5)", "", "text")] : [field("lambda", "λ", ""), field("k", "k", "")]),
     ],
     compute: (s, p) => {
       if (s.dist === "norm") {
@@ -131,13 +131,23 @@ export function distributions() {
         const q = p(s.p); if (q !== null && q > 0 && q < 1) rows.push(resultRow(`Quantil x mit P(X ≤ x) = ${r(q)}`, r(M.normalInv(q, mu, sg), 10)));
         return rows;
       }
-      const k = Math.round(p(s.k) ?? 0);
       if (s.dist === "binom") {
         const n = Math.round(p(s.n)), pp = p(s.pp);
+        if (!(n >= 0) || !(pp >= 0 && pp <= 1)) throw new Error("range");
+        const ks = String(s.k ?? "").split(";").map((t) => t.trim()).filter(Boolean).map((t) => p(t));
+        if (ks.some((v) => v === null || !Number.isFinite(v))) throw new Error("range");
+        ks.forEach((v, i) => { ks[i] = Math.round(v); });
+        if (ks.length > 1) { // Liste: Tabelle k | P(X = k) | P(X ≤ k)
+          return [h("div", { class: "row chart-row" }, h("table", { class: "ttable" },
+            h("tr", {}, h("th", {}, "k"), h("th", {}, "P(X = k)"), h("th", {}, "P(X ≤ k)")),
+            ...ks.map((k) => h("tr", {}, h("td", {}, String(k)), h("td", {}, r(M.binomPdf(k, n, pp), 10)), h("td", {}, r(M.binomCdf(k, n, pp), 10)))))),
+            resultRow("Erwartungswert n·p", r(n * pp)), resultRow("Standardabweichung √(n·p·(1−p))", r(Math.sqrt(n * pp * (1 - pp))))];
+        }
+        const k = ks[0] ?? 0;
         return [resultRow(`P(X = ${k})`, r(M.binomPdf(k, n, pp), 10), "good"), resultRow(`P(X ≤ ${k})`, r(M.binomCdf(k, n, pp), 10)),
                 resultRow(`P(X ≥ ${k})`, r(1 - M.binomCdf(k - 1, n, pp), 10)), resultRow("Erwartungswert n·p", r(n * pp)), resultRow("Standardabweichung √(n·p·(1−p))", r(Math.sqrt(n * pp * (1 - pp))))];
       }
-      const l = p(s.lambda);
+      const k = Math.round(p(s.k) ?? 0), l = p(s.lambda);
       return [resultRow(`P(X = ${k})`, r(M.poissonPdf(k, l), 10), "good"), resultRow(`P(X ≤ ${k})`, r(M.poissonCdf(k, l), 10)),
               resultRow(`P(X ≥ ${k})`, r(1 - M.poissonCdf(k - 1, l), 10)), resultRow("Erwartungswert = Varianz", r(l))];
     },

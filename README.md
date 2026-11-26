@@ -13,7 +13,7 @@ Keine Datenübertragung: Verlauf, Projekte und Einstellungen bleiben lokal im Br
 
 Ausführliche Anleitung in der App unter **„App installieren“**.
 
-## Funktionen (v1.9.1)
+## Funktionen (v1.10.0)
 
 **Rechnen**
 - **Startansicht wählbar** (Einstellungen: Liste, Rechner oder zuletzt verwendet); die Rechner-Ansicht passt sich der Bildschirmhöhe an – kein Scrollen
@@ -22,7 +22,7 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
   nummerierten Menüs, Koeffizienten- und Datentabellen, Bearbeitungszeile unten; ◀▶▲▼ bewegen den Cursor, = übernimmt bzw. rechnet, AC führt zurück
   - **Berechnen**, **Komplex** (CMPLX; i über die Taste ENG, r∠φ über OPTN → ∠; S⇔D wechselt a+bi ↔ r∠θ), **Basis-N** (Eingabe Dez/Hex/Bin/Okt, Ergebnis ganzzahlig in allen vier Systemen)
   - **Matrix** (vier Matrizen MatA–MatD bis 4 × 4; Matrix-Rechnung mit frei eingegebenen Ausdrücken wie MatA×MatB+MatC, MatA⁻¹, MatA², det(, Trn(, Ident(, Rang(, MatAns – MatA–D über ALPHA A–D oder OPTN; exakte Brüche; Rang, det und Eigenwerte je Matrix), **Vektor** (VctA/VctB 2D/3D; Betrag, Skalar-/Kreuzprodukt, Winkel, Summe/Differenz, Einheitsvektor)
-  - **Statistik** (1 Variable oder Regression linear/quadratisch/log/exp/Potenz; x/y-Datentabelle), **Verteilung** (Normal-VD/-VK, Invers Normal, Binomial-VD/-VK, Poisson-VD/-VK)
+  - **Statistik** (1 Variable oder Regression linear/quadratisch/log/exp/Potenz; x/y-Datentabelle), **Verteilung** (Normal-VD/-VK, Invers Normal, Binomial-VD/-VK mit k, n, p – als Liste mehrerer k-Werte oder als einzelne Variable –, Poisson-VD/-VK)
   - **Tabelle** (f(x), g(x), Start/Ende/Schritt, max. 200 Zeilen), **Gleichung** (Gleichungssystem 2–4 Unbekannte, Polynom Grad 2–6, Ungleichung Grad 1–4)
   - **Plotter** (f und g im Display, Spur mit ◀▶, Zoom mit +/−; immer im Bogenmaß) und **Kurvendiskussion** (f′, f″, Nullstellen, Extrema, Wendepunkte)
   - Eingaben der Modi bleiben gespeichert; die Listenansicht der App bietet dieselben Werkzeuge weiterhin als Formulare
@@ -72,7 +72,7 @@ Ausführliche Anleitung in der App unter **„App installieren“**.
 **Statistik & Wahrscheinlichkeit**
 - 1-Variablen-Statistik mit Häufigkeiten, Quartilen, Modus
 - Regression: linear, quadratisch, exponentiell, logarithmisch, Potenz
-- Normal-, Binomial- und Poisson-Verteilung (Wahrscheinlichkeiten, Quantile)
+- Normal-, Binomial- und Poisson-Verteilung (Wahrscheinlichkeiten, Quantile; Binomial auch für eine Liste von k-Werten)
 - Kombinatorik (nCr, nPr, mit Wiederholung, n!)
 - Signifikanztest (Binomialverteilung, links-/rechts-/beidseitig): Ablehnungsbereich, tatsächliche Irrtumswahrscheinlichkeit, Fehler 2. Art, Entscheidung
 - Zweistufiges Baumdiagramm mit Vierfeldertafel, totaler Wahrscheinlichkeit und Satz von Bayes

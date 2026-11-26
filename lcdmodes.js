@@ -321,11 +321,45 @@ export function createLcdApp({ M, natural, exactNode, cfg, vars, save, onComp })
       ["Normal-VD (Dichte)", () => distForm("Normal-VD", [["x", "0"], ["σ", "1"], ["μ", "0"]], (p) => [["p =", M.normalPdf(p.x, p.μ, p.σ)]])],
       ["Normal-VK (kumulativ)", () => distForm("Normal-VK", [["Untere", "-1"], ["Obere", "1"], ["σ", "1"], ["μ", "0"]], (p) => [["P =", M.normalCdf(p.Obere, p.μ, p.σ) - M.normalCdf(p.Untere, p.μ, p.σ)]])],
       ["Invers Normal", () => distForm("Invers Normal", [["Fläche", "0.95"], ["σ", "1"], ["μ", "0"]], (p) => [["x =", M.normalInv(p.Fläche, p.μ, p.σ)]])],
-      ["Binomial-VD", () => distForm("Binomial-VD", [["x", "3"], ["N", "10"], ["p", "0.5"]], (p) => [["P(X = x) =", M.binomPdf(Math.round(p.x), Math.round(p.N), p.p)]])],
-      ["Binomial-VK", () => distForm("Binomial-VK", [["x", "3"], ["N", "10"], ["p", "0.5"]], (p) => [["P(X ≤ x) =", M.binomCdf(Math.round(p.x), Math.round(p.N), p.p)]])],
+      ["Binomial-VD", () => binomMenu(false)],
+      ["Binomial-VK", () => binomMenu(true)],
       ["Poisson-VD", () => distForm("Poisson-VD", [["x", "2"], ["λ", "3"]], (p) => [["P(X = x) =", M.poissonPdf(Math.round(p.x), p.λ)]])],
       ["Poisson-VK", () => distForm("Poisson-VK", [["x", "2"], ["λ", "3"]], (p) => [["P(X ≤ x) =", M.poissonCdf(Math.round(p.x), p.λ)]])],
     ]);
+  }
+  // Binomial wie beim Schulrechner: Liste (mehrere k auf einmal) oder Variable (ein k); Bezeichnungen k, n, p
+  function binomMenu(cum) {
+    const title = cum ? "Binomial-VK" : "Binomial-VD";
+    const key = `dist:${title}`, old = store[key];
+    if (old && old.k === undefined && old.x !== undefined) { store[key] = { k: old.x, n: old.N ?? "10", p: old.p ?? "0.5" }; persist(); } // alte Eingaben (x, N) übernehmen
+    const f = (k, n, p) => (cum ? M.binomCdf(k, n, p) : M.binomPdf(k, n, p)), lbl = cum ? "P(X ≤ k)" : "P(X = k)";
+    menu(title, [
+      ["Liste", () => binomList(title, cum, f, lbl)],
+      ["Variable", () => distForm(title, [["k", "3"], ["n", "10"], ["p", "0.5"]], (p) => { binomCheck(p.n, p.p); return [[`${lbl} =`, f(Math.round(p.k), Math.round(p.n), p.p)]]; })],
+    ]);
+  }
+  function binomCheck(n, p) { if (!(Number.isInteger(Math.round(n)) && n >= 0) || !(p >= 0 && p <= 1)) throw new Error("Math ERROR: n ≥ 0, 0 ≤ p ≤ 1"); }
+  function binomList(title, cum, f, lbl) {
+    store.binomList ??= { k: ["0", "1", "2", "3", ""], n: "10", p: "0.5" };
+    const B = store.binomList;
+    if (!B.k.length || B.k[B.k.length - 1] !== "") B.k.push("");
+    // 1. Liste der k-Werte, 2. n und p, 3. Ergebnistabelle k | P
+    push({ type: "grid", title: `${title}: Liste k`, hint: "= weiter  OPTN", headers: ["k"], sel: [0, 0], rows: () => B.k.length,
+      get: (r) => B.k[r], set: (r, c, v) => { B.k[r] = v; if (r === B.k.length - 1 && v !== "" && B.k.length < 200) B.k.push(""); persist(); },
+      grow: (n) => { if (B.k[B.k.length - 1] === "") return; while (B.k.length < Math.min(n, 200)) B.k.push(""); persist(); },
+      optn: () => menu("OPTN", [["Liste löschen", () => { B.k = [""]; persist(); pop(); }]]),
+      solve: () => {
+        if (!B.k.some((v) => v !== "")) throw new Error("Math ERROR: keine k-Werte");
+        push({ type: "form", title: `${title}: Liste`, hint: "= berechnen", sel: 0,
+          cells: [["n", "n"], ["p", "p"]].map(([k, l]) => ({ label: `${l} :`, get: () => B[k], set: (v) => { B[k] = v; persist(); } })),
+          solve: () => {
+            const n = evNum(B.n === "" ? "0" : B.n), p = evNum(B.p === "" ? "0" : B.p); binomCheck(n, p);
+            const ks = B.k.filter((v) => v !== "").map((v) => Math.round(evNum(v)));
+            const rows = ks.map((k) => [k, f(k, Math.round(n), p)]);
+            push({ type: "grid", title: `${title} (n = ${M.num(Math.round(n))}, p = ${M.num(p)})`, hint: "▲▼  AC: zurück", headers: ["k", lbl], sel: [0, 1], rows: () => rows.length,
+              get: (r, c) => (c === 0 ? String(rows[r][0]) : M.num(rows[r][1], 10)), set: () => {}, readonly: true, solve: () => pop() });
+          } });
+      } });
   }
   function distForm(title, params, calc) {
     const key = `dist:${title}`; store[key] ??= Object.fromEntries(params);
