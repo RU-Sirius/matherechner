@@ -9,6 +9,7 @@ const math = M.math;
 const CUR = "__c__", BOX = "__p__";
 // Zahl mit Schreibmarke darin („0.‸3“, „‸12“) als ein Stück, sonst zerlegt math.js sie in 0 · ‸ · 3
 const NUMCUR = "__k__";
+const CURP = "__q__"; // Marke vor „(“, intern als (__q__) eingesetzt – nur diese Hilfsklammer wird wieder entfernt
 let numCur = null; // [Text links der Marke, Text rechts der Marke]
 const SKEY = "mx:fx", HKEY = "mx:fxhist", VKEY = "mx:fxvars";
 
@@ -102,7 +103,7 @@ export function previewNode(text, cursor) {
   numCur = rm && /\d/.test(lm + rm) ? [lm, rm] : null;
   // Marke direkt vor „(“: als (‸) einsetzen, sonst liest math.js „‸(…)“ als Funktionsaufruf
   const markBeforeParen = !numCur && R.startsWith("(") && !/[A-Za-z_]$/.test(L);
-  let t = numCur ? `${L.slice(0, L.length - lm.length)} ${NUMCUR} ${R.slice(rm.length)}` : markBeforeParen ? `${L}(${CUR})${R}` : L + CUR + R;
+  let t = numCur ? `${L.slice(0, L.length - lm.length)} ${NUMCUR} ${R.slice(rm.length)}` : markBeforeParen ? `${L}(${CURP})${R}` : L + CUR + R;
   const open0 = (t.match(/\(/g) || []).length - (t.match(/\)/g) || []).length;
   if (open0 > 0) t += ")".repeat(open0); // fehlende Klammern zuerst ergänzen, dann leere Felder erkennen
   // leere Felder einer Vorlage als Kästchen □
@@ -122,7 +123,7 @@ const endsWithCur = (x) => isCur(x) || (x?.isOperatorNode && x.fn === "multiply"
 const startsWithCur = (x) => isCur(x) || (x?.isOperatorNode && x.fn === "multiply" && x.implicit && startsWithCur(x.args[0]));
 function caretOutside(node) {
   let n = node.map((c) => caretOutside(c));
-  if (n.isParenthesisNode && isCur(n.content)) return n.content; // (‸) → ‸
+  if (n.isParenthesisNode && n.content.isSymbolNode && n.content.name === CURP) return new math.SymbolNode(CUR); // Hilfsklammer (‸) → ‸, echte leere Klammern bleiben
   // Mit ÷ eingegeben (a÷b‸, ohne Bruch-Vorlage): weitere Ziffern verlängern den Nenner, also Marke ans Ende des Nenners
   if (n.isOperatorNode && n.fn === "multiply" && n.implicit && isCur(n.args[1]) && n.args[0].isOperatorNode && n.args[0].fn === "divide" && !n.args[0].args[1].isParenthesisNode) {
     const [a, b] = n.args[0].args;
